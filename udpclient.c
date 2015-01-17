@@ -4,6 +4,7 @@
 #include <stdlib.h>     /* for atoi() and exit() */
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
+#include <stdbool.h>
 
 #define ECHOMAX 255     /* Longest string to echo */
 
@@ -20,40 +21,70 @@ int main(int argc, char *argv[]) {
     	int respStringLen;               /* Length of received response */
 	char *parserString;
 	char *tok;
+	bool expectValue;
 	
 
-    	if ((argc < 3) || (argc > 4)) {   /* Test for correct number of arguments */
-        	fprintf(stderr,"Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n", argv[0]);
+    	if (argc != 4) {   /* Test for correct number of arguments */
+		printf("error");
         	exit(1);
     	}
 
     	servIP = argv[1];           /* First arg: server IP address (dotted quad) */
-    	echoString = argv[2];       /* Second arg: string to echo */
+        echoServPort = atoi(argv[2]);  /* Use given port, if any */
+    	echoString = argv[3];       /* Second arg: string to echo */
 
     	if ((echoStringLen = strlen(echoString)) > ECHOMAX) { /* Check input length */
 		//print error that echostring is too long
 	}
 
 	parserString = malloc(strlen(echoString)+1);
-	p = strtok(parserString,",")
-	if(p == "PUT") {
-		//stuff
+	memcpy(parserString, echoString, strlen(echoString));
+	tok = strtok(parserString,",");
+	if(!strcmp(tok,"PUT")) {
+		printf("PUT STATEMENT");
+		tok = strtok(NULL,",");
+		if(tok == NULL) {
+			//NULL key			
+			exit(1);
+		}	
+		tok = strtok(NULL,",");
+		if(tok == NULL) {
+			//NULL value
+		}
+		tok = strtok(NULL,",");
+		if(tok != NULL) {
+			//too many values
+		}
 	} else {
-		if(p == "GET") {
-			//stuff
+		if(!strcmp(tok,"GET")) {
+			printf("GET STATEMEMNT");
+			tok = strtok(NULL,",");
+			if(tok == NULL) {
+				//NULL key			
+				exit(1);
+			}
+			tok = strtok(NULL,",");
+			if(tok != NULL) {
+				//too many values
+			}
+			expectValue = true;
 		} else {
-			if(p == "DELETE") {
-				//stuff
+			if(!strcmp(tok,"DELETE")) {
+				printf("DELETE STATEMENT");
+				tok = strtok(NULL,",");
+				if(tok == NULL) {
+					//NULL key			
+					exit(1);
+				}
+				tok = strtok(NULL,",");
+				if(tok != NULL) {
+					//too many values
+				}
 			} else {
-				//error
+				printf("NOPE!");
+				exit(1);
 			}
 		}
-	}
-
-    	if (argc == 4) {
-        	echoServPort = atoi(argv[3]);  /* Use given port, if any */
-    	} else {
-        	echoServPort = 7;  /* 7 is the well-known port for the echo service */
 	}
 
     	/* Create a datagram/UDP socket */
@@ -78,14 +109,21 @@ int main(int argc, char *argv[]) {
 		//print error that recvfrom failed
 	}
 
+    	/* null-terminate the received data */
+    	echoBuffer[respStringLen] = '\0';
+    	printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
+
+	if(expectValue) {
+		respStringLen = recvfrom(sock, echoBuffer, ECHOMAX, 0, (struct sockaddr *) &fromAddr, &fromSize);
+		/* null-terminate the received data */
+    		echoBuffer[respStringLen] = '\0';
+    		printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
+	}
+
     	if (echoServAddr.sin_addr.s_addr != fromAddr.sin_addr.s_addr) {
         	fprintf(stderr,"Error: received a packet from unknown source.\n");
         	exit(1);
    	}
-
-    	/* null-terminate the received data */
-    	echoBuffer[respStringLen] = '\0';
-    	printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
     
     	close(sock);
     	exit(0);

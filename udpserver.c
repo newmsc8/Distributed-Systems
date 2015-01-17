@@ -15,6 +15,9 @@ int main(int argc, char *argv[]) {
     	char echoBuffer[ECHOMAX];        /* Buffer for echo string */
     	unsigned short echoServPort;     /* Server port */
     	int recvMsgSize;                 /* Size of received message */
+	char *parserString;
+	char *tok;
+	char *keyValue[256];
 
     	if (argc != 2) {         /* Test for correct number of parameters */
         	fprintf(stderr,"Usage:  %s <UDP SERVER PORT>\n", argv[0]);
@@ -55,7 +58,44 @@ int main(int argc, char *argv[]) {
         	if (sendto(sock, echoBuffer, recvMsgSize, 0, (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize) {
 			//print to file that wrong # bytes sent
 		} else {
-			//complete action to key-value store
+			parserString = echoBuffer;
+			printf("%s\n",parserString);
+			tok = strtok(parserString,",");
+			if(!strcmp(tok,"GET")) {
+				printf("%s\n",tok);
+				tok = strtok(NULL, ",");
+				printf("%s\n",tok);
+				printf("%d\n",atoi(tok));
+				if(atoi(tok) < 0 || atoi(tok) > 255) {
+					//printerror
+				} else {
+					printf("getting key value: %d\n",atoi(tok));
+					printf("%s\n",tok);
+					sendto(sock, keyValue[atoi(tok)], strlen(keyValue[atoi(tok)]), 0, (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr));
+				}
+			}
+			if(!strcmp(tok,"PUT")) {
+				printf("%s\n",tok);
+				tok = strtok(NULL, ",");
+				printf("%s\n",tok);
+				printf("%d\n",atoi(tok));
+				if(atoi(tok) < 0 || atoi(tok) > 255) {
+					//printerror
+				} else {
+					char* value = strtok(NULL,",");
+					printf("%s\n",value);
+					keyValue[atoi(tok)] = value;
+					printf("%s\n",keyValue[atoi(tok)]);
+				}
+			}
+			if(!strcmp(tok,"DELETE")) {
+				tok = strtok(NULL,",");
+				if(atoi(tok) < 0 || atoi(tok) > 255) {
+					//printerror
+				} else {
+					keyValue[atoi(tok)] = "";
+				}
+			}
 		}
 	}
     /* NOT REACHED */
