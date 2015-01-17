@@ -24,6 +24,8 @@ int main(int argc, char *argv[]) {
         	exit(1);
     	}
 
+	//i want to keep this comment!!
+
     	servIP = argv[1];           /* First arg: server IP address (dotted quad) */
     	echoString = argv[2];       /* Second arg: string to echo */
 
