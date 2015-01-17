@@ -5,6 +5,7 @@
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
 #include <stdbool.h>
+#include <sys/time.h>
 
 #define ECHOMAX 255     /* Longest string to echo */
 
@@ -22,9 +23,13 @@ int main(int argc, char *argv[]) {
 	char *parserString;
 	char *tok;
 	bool expectValue;
-	
+	struct timeval tv;
+	double time_in_mill;
 
     	if (argc != 4) {   /* Test for correct number of arguments */
+		gettimeofday(&tv, NULL);
+		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+    		printf("%f",time_in_mill);
 		printf("error");
         	exit(1);
     	}
@@ -91,6 +96,12 @@ int main(int argc, char *argv[]) {
     	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 		//print error that socket creation failed
 	}
+	tv.tv_sec = 30;  /* 30 Secs Timeout */
+	tv.tv_usec = 0;  // Not init'ing this can cause strange errors
+
+	if((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval))) < 0) {
+		//setting timeout failed
+	}
 
     	/* Construct the server address structure */
     	memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
@@ -111,16 +122,25 @@ int main(int argc, char *argv[]) {
 
     	/* null-terminate the received data */
     	echoBuffer[respStringLen] = '\0';
+	gettimeofday(&tv, NULL);
+	time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+    	printf("%f",time_in_mill);
     	printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
 
 	if(expectValue) {
 		respStringLen = recvfrom(sock, echoBuffer, ECHOMAX, 0, (struct sockaddr *) &fromAddr, &fromSize);
 		/* null-terminate the received data */
     		echoBuffer[respStringLen] = '\0';
+    		gettimeofday(&tv, NULL);
+		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+    		printf("%f",time_in_mill);
     		printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
 	}
 
     	if (echoServAddr.sin_addr.s_addr != fromAddr.sin_addr.s_addr) {
+		gettimeofday(&tv, NULL);
+		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+    		printf("%f",time_in_mill);
         	fprintf(stderr,"Error: received a packet from unknown source.\n");
         	exit(1);
    	}
