@@ -18,19 +18,36 @@ int main(int argc, char *argv[]) {
     	char echoBuffer[ECHOMAX+1];      /* Buffer for receiving echoed string */
     	int echoStringLen;               /* Length of string to echo */
     	int respStringLen;               /* Length of received response */
+	char *parserString;
+	char *tok;
+	
 
     	if ((argc < 3) || (argc > 4)) {   /* Test for correct number of arguments */
         	fprintf(stderr,"Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n", argv[0]);
         	exit(1);
     	}
 
-	//i want to keep this comment!!
-
     	servIP = argv[1];           /* First arg: server IP address (dotted quad) */
     	echoString = argv[2];       /* Second arg: string to echo */
 
     	if ((echoStringLen = strlen(echoString)) > ECHOMAX) { /* Check input length */
 		//print error that echostring is too long
+	}
+
+	parserString = malloc(strlen(echoString)+1);
+	p = strtok(parserString,",")
+	if(p == "PUT") {
+		//stuff
+	} else {
+		if(p == "GET") {
+			//stuff
+		} else {
+			if(p == "DELETE") {
+				//stuff
+			} else {
+				//error
+			}
+		}
 	}
 
     	if (argc == 4) {
