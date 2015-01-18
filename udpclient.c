@@ -10,15 +10,15 @@
 #define MSGMAX 255	// longest datagram client can/will send
 
 int main(int argc, char *argv[]) {
-	int sock;                     	// Socket descriptor
-    	struct sockaddr_in serverAddr;	// Server address
+	int sock;                     	// Socket
+    	struct sockaddr_in serverAddr;	// Server address structure
     	struct sockaddr_in receiveAddr;	// Address message received from
     	unsigned short serverPort;	// Server port
     	unsigned int receiveSize;   	// Received address size for recvfrom()
-    	char *servIP;            	// Server
-    	char *datagram;     		// String to send to echo server
-    	char receivedMsg[MSGMAX+1];	// Buffer for receiving echoed string
-    	int datagramLen;   		// Length of string to echo
+    	char *servIP;            	// Server IP address
+    	char *datagram;     		// String to send to server
+    	char receivedMsg[MSGMAX+1];	// Receiving message
+    	int datagramLen;   		// Length of datagram
     	int respStringLen;   		// Length of received response
 	char *parserString;		// Copy of message to parse
 	char *tok;			// Tokens of parsed message
@@ -26,7 +26,8 @@ int main(int argc, char *argv[]) {
 	struct timeval tv;		// Timeval to set timeout and gettimeofday
 	double time_in_mill;		// Holds time in milliseconds for print
 
-    	if (argc != 4) {   /* Test for correct number of arguments */
+	// Ensure correct number of parameters
+    	if (argc != 4) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
     		printf("%f",time_in_mill);
@@ -34,9 +35,9 @@ int main(int argc, char *argv[]) {
         	exit(1);
     	}
 
-    	servIP = argv[1];           /* First arg: server IP address (dotted quad) */
-        serverPort = atoi(argv[2]);  /* Use given port, if any */
-    	datagram = argv[3];       /* Second arg: string to echo */
+    	servIP = argv[1];		// Set server IP address as the first argument
+        serverPort = atoi(argv[2]);	// Set server port as the second argument
+    	datagram = argv[3];       	// Set the datagram to send as the third argument
 
     	if ((datagramLen = strlen(datagram)) > MSGMAX) { /* Check input length */
 		//print error that datagram is too long
