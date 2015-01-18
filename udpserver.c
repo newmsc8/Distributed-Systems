@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     	if (argc != 2) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-        	fprintf(stderr,"Usage:  %s <UDP SERVER PORT>\n", argv[0]);
+		fprintf(stderr,"%f: Wrong number of parameters provided.",time_in_mill);
         	exit(1);
     	}
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-		printf("error creating socket");
+		fprintf(stderr,"%f: Error creating socket.",time_in_mill);
 	}
 	
 
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     	if (bind(sock, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-		printf("error binding the socket to the local address structure");		
+		fprintf(stderr,"%f: Error binding the socket to the local address structure.",time_in_mill);		
 	}
   
 	// Run for loop forever
@@ -63,19 +63,19 @@ int main(int argc, char *argv[]) {
         	if ((msgSize = recvfrom(sock, message, MSGMAX, 0, (struct sockaddr *) &clientAddr, &clientAddrLen)) < 0) {
 			gettimeofday(&tv, NULL);
 			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-			printf("recvfrom() failed");			
+			fprintf(stderr,"%f: Recvfrom() failed.",time_in_mill);			
 		}
 
 		// Print address of client
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-        	printf("Handling client %s\n", inet_ntoa(clientAddr.sin_addr));
+        	fprintf(stdout,"%f: Handling client %s.\n",time_in_mill, inet_ntoa(clientAddr.sin_addr));
 
         	// Print error if wrong size message sent, otherwise take appropriate acction
         	if (sendto(sock, message, msgSize, 0, (struct sockaddr *) &clientAddr, sizeof(clientAddr)) != msgSize) {
 			gettimeofday(&tv, NULL);
 			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-			printf("wrong number of bytes sent");
+			fprintf(stderr,"%f: Wrong number of bytes sent.",time_in_mill);
 		} else {
 			parserString = message;
 			tok = strtok(parserString,",");
@@ -86,7 +86,8 @@ int main(int argc, char *argv[]) {
 				if(atoi(tok) < 0 || atoi(tok) > 255) {
 					gettimeofday(&tv, NULL);
 					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-					printf("Invalid key provided");
+					fprintf(stderr,"%f: Invalid key provided.",time_in_mill);
+					sendto(sock, "error", strlen("error"), 0, (struct sockaddr *) &clientAddr, sizeof(clientAddr));
 				} else {
 					// Send value at key location
 					sendto(sock, keyValue[atoi(tok)], strlen(keyValue[atoi(tok)]), 0, (struct sockaddr *) &clientAddr, sizeof(clientAddr));
@@ -99,7 +100,7 @@ int main(int argc, char *argv[]) {
 				if(atoi(tok) < 0 || atoi(tok) > 255) {	
 					gettimeofday(&tv, NULL);
 					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-					printf("Invalid key provided");
+					fprintf(stderr,"%f: Invalid key provided.",time_in_mill);
 				} else {
 					// Set key location to provided value
 					char* value = strtok(NULL,",");
@@ -113,7 +114,7 @@ int main(int argc, char *argv[]) {
 				if(atoi(tok) < 0 || atoi(tok) > 255) {	
 					gettimeofday(&tv, NULL);
 					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-					printf("Invalid key provided");
+					fprintf(stderr,"%f: Invalid key provided.",time_in_mill);
 				} else {
 					// Set key location to empty
 					keyValue[atoi(tok)] = "";

@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     	if (argc != 4) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-		printf("error");
+		fprintf(stderr,"%f: Wrong number of parameters provided.",time_in_mill);
         	exit(1);
     	}
 
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     	if ((datagramLen = strlen(datagram)) > MSGMAX) {	
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-		printf("datagram too long");
+		fprintf(stderr,"%f: Datagram too long,",time_in_mill);
 		exit(1);
 	}
 
@@ -56,21 +56,21 @@ int main(int argc, char *argv[]) {
 		if(tok == NULL) {
 			gettimeofday(&tv, NULL);
 			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-			printf("NULL key provided");			
+			fprintf(stderr,"%f: NULL key provided,",time_in_mill);			
 			exit(1);
 		}	
 		tok = strtok(NULL,",");
 		if(tok == NULL) {
 			gettimeofday(&tv, NULL);
 			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-			printf("NULL value provided");
+			fprintf(stderr,"%f: NULL value provided.",time_in_mill);
 			exit(1);
 		}
 		tok = strtok(NULL,",");
 		if(tok != NULL) {
 			gettimeofday(&tv, NULL);
 			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-			printf("too many values provided");
+			fprintf(stderr,"%f: Too many values provided.",time_in_mill);
 			exit(1);
 		}
 	} else {
@@ -80,14 +80,14 @@ int main(int argc, char *argv[]) {
 			if(tok == NULL) {
 				gettimeofday(&tv, NULL);
 				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-				printf("NULL key provided");			
+				fprintf(stderr,"%f: NULL key provided.",time_in_mill);			
 				exit(1);
 			}
 			tok = strtok(NULL,",");
 			if(tok != NULL) {
 				gettimeofday(&tv, NULL);
 				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-				printf("too many values provided");
+				fprintf(stderr,"%f: Too many values provided.",time_in_mill);
 				exit(1);	
 			}
 			expectValue = true;
@@ -98,21 +98,21 @@ int main(int argc, char *argv[]) {
 				if(tok == NULL) {
 					gettimeofday(&tv, NULL);
 					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-					printf("NULL key provided");	
+					fprintf(stderr,"%f: NULL key provided.",time_in_mill);	
 					exit(1);
 				}
 				tok = strtok(NULL,",");
 				if(tok != NULL) {
 					gettimeofday(&tv, NULL);
 					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-					printf("NULL too many values provided");
+					fprintf(stderr,"%f: NULL too many values provided.",time_in_mill);
 					exit(1);	
 				}
 			} else {
 				// Unacceptable action
 				gettimeofday(&tv, NULL);
 				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-				printf("Unacceptable action requested");
+				fprintf(stderr,"%f: Unacceptable action requested.",time_in_mill);
 				exit(1);
 			}
 		}
@@ -122,18 +122,18 @@ int main(int argc, char *argv[]) {
     	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-		printf("socket creation failed");
+		fprintf(stderr,"%f: Socket creation failed.",time_in_mill);
 		exit(1);	
 	}
 
-	tv.tv_sec = 30;  // 30 Secs Timeout
+	tv.tv_sec = 30;	// 30 Secs Timeout
 	tv.tv_usec = 0;
 
 	// Set socket timeout
 	if((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval))) < 0) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-		printf("setting timeout failed");
+		fprintf(stderr,"%f: Setting timeout failed.",time_in_mill);
 		exit(1);
 	}
 
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
     	if (sendto(sock, datagram, datagramLen, 0, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) != datagramLen) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-		printf("sent an unexpected number of bytes");
+		fprintf(stderr,"%f: Sent an unexpected number of bytes.",time_in_mill);
 		exit(1);
 	}
   
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
     	if ((respStringLen = recvfrom(sock, receivedMsg, MSGMAX, 0, (struct sockaddr *) &receiveAddr, &receiveSize)) != datagramLen) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-		printf("error in recvfrom()");
+		fprintf(stderr,"%f: Error in recvfrom().",time_in_mill);
 		exit(1);
 	}
 
@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
     	receivedMsg[respStringLen] = '\0';
 	gettimeofday(&tv, NULL);
 	time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-    	printf("Received: %s\n", receivedMsg);    // Print the received message
+    	fprintf(stdout,"%f: Received: %s.\n",time_in_mill, receivedMsg);	// Print the received message
 
 	if(expectValue) {
 		respStringLen = recvfrom(sock, receivedMsg, MSGMAX, 0, (struct sockaddr *) &receiveAddr, &receiveSize);
@@ -172,14 +172,14 @@ int main(int argc, char *argv[]) {
     		receivedMsg[respStringLen] = '\0';
     		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-    		printf("Received: %s\n", receivedMsg);    // Print the received message
+    		fprintf(stdout,"%f: Received: %s.\n",time_in_mill, receivedMsg);	// Print the received message
 	}
 
 	// Check that the response came from expected source
     	if (serverAddr.sin_addr.s_addr != receiveAddr.sin_addr.s_addr) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-        	fprintf(stderr,"Error: received a packet from unknown source.\n");
+        	fprintf(stderr,"%f: Error: received a packet from unknown source.\n",time_in_mill);
         	exit(1);
    	}
     
