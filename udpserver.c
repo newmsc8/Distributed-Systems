@@ -4,6 +4,7 @@
 #include <stdlib.h>     // atoi(), exit()
 #include <string.h>     // memset()
 #include <unistd.h>     // close()
+#include <sys/time.h>	// gettimeofday()
 
 #define MSGMAX 255     // Longest datagram can/will receive
 
@@ -18,9 +19,13 @@ int main(int argc, char *argv[]) {
 	char *parserString;			// Copy of received message to parse
 	char *tok;				// Tokens of parsed message
 	char *keyValue[256];			// Key-Value Store
+	struct timeval tv;			// Timeval for gettimeofday
+	double time_in_mill;			// Holds time in milliseconds for print
 
 	// Ensure correct number of parameters
     	if (argc != 2) {
+		gettimeofday(&tv, NULL);
+		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
         	fprintf(stderr,"Usage:  %s <UDP SERVER PORT>\n", argv[0]);
         	exit(1);
     	}
@@ -30,19 +35,23 @@ int main(int argc, char *argv[]) {
 
     	// Create datagram socket
     	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-		//print to file that socket creating failed
+		gettimeofday(&tv, NULL);
+		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+		printf("error creating socket");
 	}
 	
 
-    	// create local address structure
+    	// Create local address structure
     	memset(&serverAddr, 0, sizeof(serverAddr));   	// Empty address structure
-    	serverAddr.sin_family = AF_INET;           	// Eet address family
+    	serverAddr.sin_family = AF_INET;           	// Set address family
     	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);	// Any incoming interface
     	serverAddr.sin_port = htons(serverPort);	// Set local port
 
     	// Bind the socket to the local address
     	if (bind(sock, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) {
-		//print to file that binding failed
+		gettimeofday(&tv, NULL);
+		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+		printf("error binding the socket to the local address structure");		
 	}
   
 	// Run for loop forever
@@ -52,15 +61,21 @@ int main(int argc, char *argv[]) {
 
         	// Eait to receive a message from a client
         	if ((msgSize = recvfrom(sock, message, MSGMAX, 0, (struct sockaddr *) &clientAddr, &clientAddrLen)) < 0) {
-			//print to file that recvfrom failed
+			gettimeofday(&tv, NULL);
+			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+			printf("recvfrom() failed");			
 		}
 
 		// Print address of client
+		gettimeofday(&tv, NULL);
+		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
         	printf("Handling client %s\n", inet_ntoa(clientAddr.sin_addr));
 
         	// Print error if wrong size message sent, otherwise take appropriate acction
         	if (sendto(sock, message, msgSize, 0, (struct sockaddr *) &clientAddr, sizeof(clientAddr)) != msgSize) {
-			//print to file that wrong # bytes sent
+			gettimeofday(&tv, NULL);
+			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+			printf("wrong number of bytes sent");
 		} else {
 			parserString = message;
 			tok = strtok(parserString,",");
@@ -69,7 +84,9 @@ int main(int argc, char *argv[]) {
 				tok = strtok(NULL, ",");
 				// Ensure key is a valid key
 				if(atoi(tok) < 0 || atoi(tok) > 255) {
-					//printerror
+					gettimeofday(&tv, NULL);
+					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+					printf("Invalid key provided");
 				} else {
 					// Send value at key location
 					sendto(sock, keyValue[atoi(tok)], strlen(keyValue[atoi(tok)]), 0, (struct sockaddr *) &clientAddr, sizeof(clientAddr));
@@ -79,8 +96,10 @@ int main(int argc, char *argv[]) {
 			if(!strcmp(tok,"PUT")) {
 				tok = strtok(NULL, ",");
 				// Ensure key is a valid key
-				if(atoi(tok) < 0 || atoi(tok) > 255) {
-					//printerror
+				if(atoi(tok) < 0 || atoi(tok) > 255) {	
+					gettimeofday(&tv, NULL);
+					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+					printf("Invalid key provided");
 				} else {
 					// Set key location to provided value
 					char* value = strtok(NULL,",");
@@ -91,8 +110,10 @@ int main(int argc, char *argv[]) {
 			if(!strcmp(tok,"DELETE")) {
 				tok = strtok(NULL,",");
 				// Ensure key is a valid key
-				if(atoi(tok) < 0 || atoi(tok) > 255) {
-					//printerror
+				if(atoi(tok) < 0 || atoi(tok) > 255) {	
+					gettimeofday(&tv, NULL);
+					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+					printf("Invalid key provided");
 				} else {
 					// Set key location to empty
 					keyValue[atoi(tok)] = "";
@@ -100,5 +121,5 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-    /* NOT REACHED */
+	// Never reach this point
 }
