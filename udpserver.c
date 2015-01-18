@@ -1,98 +1,100 @@
-#include <stdio.h>      /* for printf() and fprintf() */
-#include <sys/socket.h> /* for socket() and bind() */
-#include <arpa/inet.h>  /* for sockaddr_in and inet_ntoa() */
-#include <stdlib.h>     /* for atoi() and exit() */
-#include <string.h>     /* for memset() */
-#include <unistd.h>     /* for close() */
+#include <stdio.h>      // printf(), fprintf()
+#include <sys/socket.h> // socket(), bind()
+#include <arpa/inet.h>  // sockaddr_in, inet_ntoa()
+#include <stdlib.h>     // atoi(), exit()
+#include <string.h>     // memset()
+#include <unistd.h>     // close()
 
-#define ECHOMAX 255     /* Longest string to echo */
+#define MSGMAX 255     // Longest datagram can/will receive
 
 int main(int argc, char *argv[]) {
-	int sock;                        /* Socket */
-	struct sockaddr_in echoServAddr; /* Local address */
-    	struct sockaddr_in echoClntAddr; /* Client address */
-    	unsigned int cliAddrLen;         /* Length of incoming message */
-    	char echoBuffer[ECHOMAX];        /* Buffer for echo string */
-    	unsigned short echoServPort;     /* Server port */
-    	int recvMsgSize;                 /* Size of received message */
-	char *parserString;
-	char *tok;
-	char *keyValue[256];
+	int sock;                        	// Socket
+	struct sockaddr_in serverAddr; 		// Local address 
+    	struct sockaddr_in clientAddr;		// Client address 
+    	unsigned int clientAddrLen;		// Length of incoming message
+    	char message[MSGMAX];			// Incoming message
+    	unsigned short serverPort;		// Server port
+    	int msgSize;				// Size of received message
+	char *parserString;			// Copy of received message to parse
+	char *tok;				// Tokens of parsed message
+	char *keyValue[256];			// Key-Value Store
 
-    	if (argc != 2) {         /* Test for correct number of parameters */
+	// Ensure correct number of parameters
+    	if (argc != 2) {
         	fprintf(stderr,"Usage:  %s <UDP SERVER PORT>\n", argv[0]);
         	exit(1);
     	}
 
-    	echoServPort = atoi(argv[1]);  /* First arg:  local port */
+	// Set server port as the first argument
+    	serverPort = atoi(argv[1]);
 
-    	/* Create socket for sending/receiving datagrams */
+    	// Create datagram socket
     	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 		//print to file that socket creating failed
 	}
 	
 
-    	/* Construct local address structure */
-    	memset(&echoServAddr, 0, sizeof(echoServAddr));   /* Zero out structure */
-    	echoServAddr.sin_family = AF_INET;                /* Internet address family */
-    	echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY); /* Any incoming interface */
-    	echoServAddr.sin_port = htons(echoServPort);      /* Local port */
+    	// create local address structure
+    	memset(&serverAddr, 0, sizeof(serverAddr));   	// Empty address structure
+    	serverAddr.sin_family = AF_INET;           	// Eet address family
+    	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);	// Any incoming interface
+    	serverAddr.sin_port = htons(serverPort);	// Set local port
 
-    	/* Bind to the local address */
-    	if (bind(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0) {
+    	// Bind the socket to the local address
+    	if (bind(sock, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) {
 		//print to file that binding failed
 	}
   
-    	for (;;) { /* Run forever */
-        	/* Set the size of the in-out parameter */
-        	cliAddrLen = sizeof(echoClntAddr);
+	// Run for loop forever
+    	for (;;) {
+        	// Set the length of incoming messages
+        	clientAddrLen = sizeof(clientAddr);
 
-        	/* Block until receive message from a client */
-        	if ((recvMsgSize = recvfrom(sock, echoBuffer, ECHOMAX, 0, (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0) {
+        	// Eait to receive a message from a client
+        	if ((msgSize = recvfrom(sock, message, MSGMAX, 0, (struct sockaddr *) &clientAddr, &clientAddrLen)) < 0) {
 			//print to file that recvfrom failed
 		}
 
-        	printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
+		// Print address of client
+        	printf("Handling client %s\n", inet_ntoa(clientAddr.sin_addr));
 
-        	/* Send received datagram back to the client */
-        	if (sendto(sock, echoBuffer, recvMsgSize, 0, (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize) {
+        	// Print error if wrong size message sent, otherwise take appropriate acction
+        	if (sendto(sock, message, msgSize, 0, (struct sockaddr *) &clientAddr, sizeof(clientAddr)) != msgSize) {
 			//print to file that wrong # bytes sent
 		} else {
-			parserString = echoBuffer;
-			printf("%s\n",parserString);
+			parserString = message;
 			tok = strtok(parserString,",");
+			// GET action
 			if(!strcmp(tok,"GET")) {
-				printf("%s\n",tok);
 				tok = strtok(NULL, ",");
-				printf("%s\n",tok);
-				printf("%d\n",atoi(tok));
+				// Ensure key is a valid key
 				if(atoi(tok) < 0 || atoi(tok) > 255) {
 					//printerror
 				} else {
-					printf("getting key value: %d\n",atoi(tok));
-					printf("%s\n",tok);
-					sendto(sock, keyValue[atoi(tok)], strlen(keyValue[atoi(tok)]), 0, (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr));
+					// Send value at key location
+					sendto(sock, keyValue[atoi(tok)], strlen(keyValue[atoi(tok)]), 0, (struct sockaddr *) &clientAddr, sizeof(clientAddr));
 				}
 			}
+			// PUT action
 			if(!strcmp(tok,"PUT")) {
-				printf("%s\n",tok);
 				tok = strtok(NULL, ",");
-				printf("%s\n",tok);
-				printf("%d\n",atoi(tok));
+				// Ensure key is a valid key
 				if(atoi(tok) < 0 || atoi(tok) > 255) {
 					//printerror
 				} else {
+					// Set key location to provided value
 					char* value = strtok(NULL,",");
-					printf("%s\n",value);
 					keyValue[atoi(tok)] = value;
-					printf("%s\n",keyValue[atoi(tok)]);
 				}
 			}
+			// DELETE action
 			if(!strcmp(tok,"DELETE")) {
 				tok = strtok(NULL,",");
+				// Ensure key is a valid key
 				if(atoi(tok) < 0 || atoi(tok) > 255) {
 					//printerror
 				} else {
+					// Set key location to empty
 					keyValue[atoi(tok)] = "";
 				}
 			}

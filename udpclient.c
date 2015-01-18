@@ -1,30 +1,30 @@
-#include <stdio.h>      /* for printf() and fprintf() */
-#include <sys/socket.h> /* for socket(), connect(), sendto(), and recvfrom() */
-#include <arpa/inet.h>  /* for sockaddr_in and inet_addr() */
-#include <stdlib.h>     /* for atoi() and exit() */
-#include <string.h>     /* for memset() */
-#include <unistd.h>     /* for close() */
-#include <stdbool.h>
-#include <sys/time.h>
+#include <stdio.h>      // printf(), fprintf()
+#include <sys/socket.h> // socket(), connect(), sendto(), recvfrom()
+#include <arpa/inet.h>  // sockaddr_in, inet_addr()
+#include <stdlib.h>     // atoi(), exit()
+#include <string.h>     // memset()
+#include <unistd.h>     // close()
+#include <stdbool.h>	// bool
+#include <sys/time.h>	// gettimeofday()
 
-#define ECHOMAX 255     /* Longest string to echo */
+#define MSGMAX 255	// longest datagram client can/will send
 
 int main(int argc, char *argv[]) {
-	int sock;                        /* Socket descriptor */
-    	struct sockaddr_in echoServAddr; /* Echo server address */
-    	struct sockaddr_in fromAddr;     /* Source address of echo */
-    	unsigned short echoServPort;     /* Echo server port */
-    	unsigned int fromSize;           /* In-out of address size for recvfrom() */
-    	char *servIP;                    /* IP address of server */
-    	char *echoString;                /* String to send to echo server */
-    	char echoBuffer[ECHOMAX+1];      /* Buffer for receiving echoed string */
-    	int echoStringLen;               /* Length of string to echo */
-    	int respStringLen;               /* Length of received response */
-	char *parserString;
-	char *tok;
-	bool expectValue;
-	struct timeval tv;
-	double time_in_mill;
+	int sock;                     	// Socket descriptor
+    	struct sockaddr_in serverAddr;	// Server address
+    	struct sockaddr_in receiveAddr;	// Address message received from
+    	unsigned short serverPort;	// Server port
+    	unsigned int receiveSize;   	// Received address size for recvfrom()
+    	char *servIP;            	// Server
+    	char *datagram;     		// String to send to echo server
+    	char receivedMsg[MSGMAX+1];	// Buffer for receiving echoed string
+    	int datagramLen;   		// Length of string to echo
+    	int respStringLen;   		// Length of received response
+	char *parserString;		// Copy of message to parse
+	char *tok;			// Tokens of parsed message
+	bool expectValue;		// Boolean indicating whether client expects value from server
+	struct timeval tv;		// Timeval to set timeout and gettimeofday
+	double time_in_mill;		// Holds time in milliseconds for print
 
     	if (argc != 4) {   /* Test for correct number of arguments */
 		gettimeofday(&tv, NULL);
@@ -35,15 +35,15 @@ int main(int argc, char *argv[]) {
     	}
 
     	servIP = argv[1];           /* First arg: server IP address (dotted quad) */
-        echoServPort = atoi(argv[2]);  /* Use given port, if any */
-    	echoString = argv[3];       /* Second arg: string to echo */
+        serverPort = atoi(argv[2]);  /* Use given port, if any */
+    	datagram = argv[3];       /* Second arg: string to echo */
 
-    	if ((echoStringLen = strlen(echoString)) > ECHOMAX) { /* Check input length */
-		//print error that echostring is too long
+    	if ((datagramLen = strlen(datagram)) > MSGMAX) { /* Check input length */
+		//print error that datagram is too long
 	}
 
-	parserString = malloc(strlen(echoString)+1);
-	memcpy(parserString, echoString, strlen(echoString));
+	parserString = malloc(strlen(datagram)+1);
+	memcpy(parserString, datagram, strlen(datagram));
 	tok = strtok(parserString,",");
 	if(!strcmp(tok,"PUT")) {
 		printf("PUT STATEMENT");
@@ -104,40 +104,40 @@ int main(int argc, char *argv[]) {
 	}
 
     	/* Construct the server address structure */
-    	memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
-    	echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
-    	echoServAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
-    	echoServAddr.sin_port   = htons(echoServPort);     /* Server port */
+    	memset(&serverAddr, 0, sizeof(serverAddr));    /* Zero out structure */
+    	serverAddr.sin_family = AF_INET;                 /* Internet addr family */
+    	serverAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
+    	serverAddr.sin_port   = htons(serverPort);     /* Server port */
 
     	/* Send the string to the server */
-    	if (sendto(sock, echoString, echoStringLen, 0, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) != echoStringLen) {
+    	if (sendto(sock, datagram, datagramLen, 0, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) != datagranLen) {
 		//print error that sendto sent an unexpected number of bytes
 	}
   
     	/* Recv a response */
-    	fromSize = sizeof(fromAddr);
-    	if ((respStringLen = recvfrom(sock, echoBuffer, ECHOMAX, 0, (struct sockaddr *) &fromAddr, &fromSize)) != echoStringLen) {
+    	fromSize = sizeof(receiveAddr);
+    	if ((respStringLen = recvfrom(sock, receivedMsg, MSGMAX, 0, (struct sockaddr *) &receiveAddr, &fromSize)) != datagramLen) {
 		//print error that recvfrom failed
 	}
 
     	/* null-terminate the received data */
-    	echoBuffer[respStringLen] = '\0';
+    	receivedMsg[respStringLen] = '\0';
 	gettimeofday(&tv, NULL);
 	time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
     	printf("%f",time_in_mill);
-    	printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
+    	printf("Received: %s\n", receivedMsg);    /* Print the echoed arg */
 
 	if(expectValue) {
-		respStringLen = recvfrom(sock, echoBuffer, ECHOMAX, 0, (struct sockaddr *) &fromAddr, &fromSize);
+		respStringLen = recvfrom(sock, receivedMsg, MSGMAX, 0, (struct sockaddr *) &receiveAddr, &fromSize);
 		/* null-terminate the received data */
-    		echoBuffer[respStringLen] = '\0';
+    		receivedMsg[respStringLen] = '\0';
     		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
     		printf("%f",time_in_mill);
-    		printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
+    		printf("Received: %s\n", receivedMsg);    /* Print the echoed arg */
 	}
 
-    	if (echoServAddr.sin_addr.s_addr != fromAddr.sin_addr.s_addr) {
+    	if (serverAddr.sin_addr.s_addr != receiveAddr.sin_addr.s_addr) {
 		gettimeofday(&tv, NULL);
 		time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
     		printf("%f",time_in_mill);
