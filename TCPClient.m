@@ -5,11 +5,23 @@
 #include <string.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <time.h>
 #include "kvm.m"
 #define PACKETSIZE 128
-
+void log_request(char* message,char* server){
+    FILE * fp;
+    fp = fopen ("client.log", "a");
+    time_t current_time;
+    char* c_time_string;
+    /* Obtain current time as seconds elapsed since the Epoch. */
+    current_time = time(NULL);
+    /* Convert to local time format. */
+    c_time_string = ctime(&current_time);
+    fprintf(fp, "%s:%s %s\n",c_time_string,server,message);
+    fclose(fp);
+}
 void handleErr(char *errorMessage){
-    printf("%s\n",errorMessage );
+    log_request(errorMessage, "");
     exit(1);}
 int validateServer(char *server, char* ip){
     struct hostent *he;
@@ -58,6 +70,6 @@ int main(int arg, char* args[]){
     if (val_srv == 1) {
         char response[PACKETSIZE];
         send_packet(ip,port,args[3],response);
-        printf("Server(%s): %s\n", ip,response);
+        log_request(response, ip);
     }
 }

@@ -13,7 +13,7 @@
 #define PACKAGING_ERR -10
 void log_request(char* message,char* client){
     FILE * fp;
-    fp = fopen ("tcp.log", "a");
+    fp = fopen ("server.log", "a");
     time_t current_time;
     char* c_time_string;
     /* Obtain current time as seconds elapsed since the Epoch. */
