@@ -36,9 +36,7 @@ int main(int argc, char *argv[]) {
         	exit(1);
     	}
 
-	fprintf(stdout,"about to readKeyValues\n");
 	readKeyValues();
-	fprintf(stdout,"%s\n",keyValue[0]);
 
 	// Set server port as the first argument
     	serverPort = atoi(argv[1]);
