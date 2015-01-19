@@ -8,6 +8,14 @@
 
 #define MSGMAX 255     // Longest datagram can/will receive
 
+void readKeyValues(char *keyValue[]) {
+	valueFile = open("keyValue
+	while((i < 256) && (line !=NULL)) {
+		keyValue[i] = line;
+		line = readLine();
+	}
+}
+
 int main(int argc, char *argv[]) {
 	int sock;                        	// Socket
 	struct sockaddr_in serverAddr; 		// Local address 
@@ -29,6 +37,8 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"%f: Wrong number of parameters provided.",time_in_mill);
         	exit(1);
     	}
+
+	readKeyValues(&keyValue);
 
 	// Set server port as the first argument
     	serverPort = atoi(argv[1]);

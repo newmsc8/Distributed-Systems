@@ -9,6 +9,86 @@
 
 #define MSGMAX 255	// longest datagram client can/will send
 
+bool validDatagram(char *datagram, bool expectValue) {
+	struct timeval tv;
+	double time_in_mill;
+	char *parserString;		// Copy of message to parse
+	char *tok;			// Tokens of parsed message
+
+	// Parse datagram by commas
+	parserString = malloc(strlen(datagram)+1);
+	memcpy(parserString, datagram, strlen(datagram));
+	tok = strtok(parserString,",");
+	// If action is put, ensure two more tokens
+	if(!strcmp(tok,"PUT")) {
+		tok = strtok(NULL,",");
+		if(tok == NULL) {
+			gettimeofday(&tv, NULL);
+			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+			fprintf(stderr,"%f: NULL key provided,",time_in_mill);	
+			return false;		
+		}	
+		tok = strtok(NULL,",");
+		if(tok == NULL) {
+			gettimeofday(&tv, NULL);
+			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+			fprintf(stderr,"%f: NULL value provided.",time_in_mill);
+			return false;
+		}
+		tok = strtok(NULL,",");
+		if(tok != NULL) {
+			gettimeofday(&tv, NULL);
+			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+			fprintf(stderr,"%f: Too many values provided.",time_in_mill);
+			return false;
+		}
+	} else {
+		// If action is get, ensure one more token and set expectValue to true
+		if(!strcmp(tok,"GET")) {
+			tok = strtok(NULL,",");
+			if(tok == NULL) {
+				gettimeofday(&tv, NULL);
+				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+				fprintf(stderr,"%f: NULL key provided.",time_in_mill);	
+				return false;		
+			}
+			tok = strtok(NULL,",");
+			if(tok != NULL) {
+				gettimeofday(&tv, NULL);	
+				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+				fprintf(stderr,"%f: Too many values provided.",time_in_mill);
+				return false;
+			}
+			expectValue = true;
+		} else {
+			// If action is delete, ensure one more token
+			if(!strcmp(tok,"DELETE")) {
+				tok = strtok(NULL,",");
+				if(tok == NULL) {
+					gettimeofday(&tv, NULL);
+					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+					fprintf(stderr,"%f: NULL key provided.",time_in_mill);
+					return false;	
+				}
+				tok = strtok(NULL,",");
+				if(tok != NULL) {
+					gettimeofday(&tv, NULL);
+					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+					fprintf(stderr,"%f: NULL too many values provided.",time_in_mill);
+					return false;
+				}
+			} else {
+				// Unacceptable action
+				gettimeofday(&tv, NULL);
+				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+				fprintf(stderr,"%f: Unacceptable action requested.",time_in_mill);
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 int main(int argc, char *argv[]) {
 	int sock;                     	// Socket
     	struct sockaddr_in serverAddr;	// Server address structure
@@ -20,8 +100,6 @@ int main(int argc, char *argv[]) {
     	char receivedMsg[MSGMAX+1];	// Receiving message
     	int datagramLen;   		// Length of datagram
     	int respStringLen;   		// Length of received response
-	char *parserString;		// Copy of message to parse
-	char *tok;			// Tokens of parsed message
 	bool expectValue = false;	// Boolean indicating whether client expects value from server
 	struct timeval tv;		// Timeval to set timeout and gettimeofday
 	double time_in_mill;		// Holds time in milliseconds for print
@@ -45,78 +123,12 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"%f: Datagram too long,",time_in_mill);
 		exit(1);
 	}
-
-	// Parse datagram by commas
-	parserString = malloc(strlen(datagram)+1);
-	memcpy(parserString, datagram, strlen(datagram));
-	tok = strtok(parserString,",");
-	// If action is put, ensure two more tokens
-	if(!strcmp(tok,"PUT")) {
-		tok = strtok(NULL,",");
-		if(tok == NULL) {
-			gettimeofday(&tv, NULL);
-			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-			fprintf(stderr,"%f: NULL key provided,",time_in_mill);			
-			exit(1);
-		}	
-		tok = strtok(NULL,",");
-		if(tok == NULL) {
-			gettimeofday(&tv, NULL);
-			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-			fprintf(stderr,"%f: NULL value provided.",time_in_mill);
-			exit(1);
-		}
-		tok = strtok(NULL,",");
-		if(tok != NULL) {
-			gettimeofday(&tv, NULL);
-			time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-			fprintf(stderr,"%f: Too many values provided.",time_in_mill);
-			exit(1);
-		}
-	} else {
-		// If action is get, ensure one more token and set expectValue to true
-		if(!strcmp(tok,"GET")) {
-			tok = strtok(NULL,",");
-			if(tok == NULL) {
-				gettimeofday(&tv, NULL);
-				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-				fprintf(stderr,"%f: NULL key provided.",time_in_mill);			
-				exit(1);
-			}
-			tok = strtok(NULL,",");
-			if(tok != NULL) {
-				gettimeofday(&tv, NULL);
-				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-				fprintf(stderr,"%f: Too many values provided.",time_in_mill);
-				exit(1);	
-			}
-			expectValue = true;
-		} else {
-			// If action is delete, ensure one more token
-			if(!strcmp(tok,"DELETE")) {
-				tok = strtok(NULL,",");
-				if(tok == NULL) {
-					gettimeofday(&tv, NULL);
-					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-					fprintf(stderr,"%f: NULL key provided.",time_in_mill);	
-					exit(1);
-				}
-				tok = strtok(NULL,",");
-				if(tok != NULL) {
-					gettimeofday(&tv, NULL);
-					time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-					fprintf(stderr,"%f: NULL too many values provided.",time_in_mill);
-					exit(1);	
-				}
-			} else {
-				// Unacceptable action
-				gettimeofday(&tv, NULL);
-				time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-				fprintf(stderr,"%f: Unacceptable action requested.",time_in_mill);
-				exit(1);
-			}
-		}
+	
+	if(!validDatagram(datagram, &expectValue)) {
+		exit(1);
 	}
+
+	
 
     	// Create datagram socket
     	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
