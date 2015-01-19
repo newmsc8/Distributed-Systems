@@ -6,13 +6,12 @@
 #include <unistd.h>     // close()
 #include <sys/time.h>	// gettimeofday()
 
-#define MSGMAX 255     // Longest datagram can/will receive
+#define MSGMAX 255	// Longest datagram can/will receive
+char *keyValue[256];	// Key-Value Store
 
-void readKeyValues(char *keyValue[]) {
-	valueFile = open("keyValue
-	while((i < 256) && (line !=NULL)) {
-		keyValue[i] = line;
-		line = readLine();
+void readKeyValues() {
+	for(int i = 0; i < 256; i++) {
+		keyValue[i] = "Initial";
 	}
 }
 
@@ -26,7 +25,6 @@ int main(int argc, char *argv[]) {
     	int msgSize;				// Size of received message
 	char *parserString;			// Copy of received message to parse
 	char *tok;				// Tokens of parsed message
-	char *keyValue[256];			// Key-Value Store
 	struct timeval tv;			// Timeval for gettimeofday
 	double time_in_mill;			// Holds time in milliseconds for print
 
@@ -38,7 +36,9 @@ int main(int argc, char *argv[]) {
         	exit(1);
     	}
 
-	readKeyValues(&keyValue);
+	fprintf(stdout,"about to readKeyValues\n");
+	readKeyValues();
+	fprintf(stdout,"%s\n",keyValue[0]);
 
 	// Set server port as the first argument
     	serverPort = atoi(argv[1]);

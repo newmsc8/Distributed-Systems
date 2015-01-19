@@ -7,9 +7,10 @@
 #include <stdbool.h>	// bool
 #include <sys/time.h>	// gettimeofday()
 
-#define MSGMAX 255	// longest datagram client can/will send
+#define MSGMAX 255		// longest datagram client can/will send
+bool expectValue = false;	// Boolean indicating whether client expects value from server
 
-bool validDatagram(char *datagram, bool expectValue) {
+bool validDatagram(char *datagram) {
 	struct timeval tv;
 	double time_in_mill;
 	char *parserString;		// Copy of message to parse
@@ -100,7 +101,6 @@ int main(int argc, char *argv[]) {
     	char receivedMsg[MSGMAX+1];	// Receiving message
     	int datagramLen;   		// Length of datagram
     	int respStringLen;   		// Length of received response
-	bool expectValue = false;	// Boolean indicating whether client expects value from server
 	struct timeval tv;		// Timeval to set timeout and gettimeofday
 	double time_in_mill;		// Holds time in milliseconds for print
 
@@ -111,6 +111,8 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"%f: Wrong number of parameters provided.",time_in_mill);
         	exit(1);
     	}
+
+	fprintf(stderr,"test");
 
     	servIP = argv[1];		// Set server IP address as the first argument
         serverPort = atoi(argv[2]);	// Set server port as the second argument
@@ -124,7 +126,7 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	
-	if(!validDatagram(datagram, &expectValue)) {
+	if(!validDatagram(datagram)) {
 		exit(1);
 	}
 
