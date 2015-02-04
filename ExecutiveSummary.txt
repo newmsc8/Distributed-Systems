@@ -8,4 +8,4 @@ The purpose of the second assignment is to incorporate RPC, multi-threading, and
 
 While there are many multithreading implementation options, this group chose to implement thread pools. This choice was made in light of ease of implementation as well as the frequency of their use in real world applications. A key short-coming of our implementation is not requiring a lock for any get request. This leaves us open to the scenario where a get returns an invalid response to the corresponding client because a put or delete on the same data has not completed. However, requiring a lock for the get request would cause a slow down for all get requests to prevent against this scenario and therefore our group decided against requiring a lock for get requests.
 
-technical impression (200–500 words) describing your experiences while carrying out the assignment
+Technical Impression (200–500 words) describing your experiences while carrying out the assignment
