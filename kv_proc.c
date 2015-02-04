@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <pthread.h>
 #include "kv.h"
 #include "kv_proto.h"
 
 char KvStore[KVSTORE_CAPACITY][2][MAX_LENGTH];
 int NextSlot;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; // initialize lock statically at declaration
 
 int * put_1_svc(KeyValue *kv, struct svc_req *req) {
   static int result; /* must be static */
@@ -44,12 +46,17 @@ int * put_1_svc(KeyValue *kv, struct svc_req *req) {
     result = PUT_KVSTORE_OUT_OF_CAPACITY;
     return (&result);
   }
+
+  // passed all of our input validation checks -- will now get lock before preceeding to CS
+  pthread_mutex_lock(&lock);
   
   for (i = 0; i < NextSlot; i++) {
     if (!strcmp(KvStore[i][0], kv->key)) {
       fprintf(stdout, "PUT: key=\"%s\", value=\"%s\", old_value=\"%s\"\n",
 	      kv->key, kv->value, KvStore[i][1]);
       strcpy(KvStore[i][1], kv->value);
+      // completed action in CS and releases lock
+      pthread_mutex_unlock(&lock);
       result = PUT_DUPLICATE_KEY_VALUE_RESET;
       return (&result);
     }
@@ -61,10 +68,14 @@ int * put_1_svc(KeyValue *kv, struct svc_req *req) {
     strcpy(KvStore[i][0], kv->key);
     strcpy(KvStore[i][1], kv->value);
     NextSlot++;
+    // completed action in CS and releases lock
+    pthread_mutex_unlock(&lock);
     result = PUT_OK;
     return (&result);
   }
 
+  // was unable to complete an action and releases lock
+  pthread_mutex_unlock(&lock);
   fprintf(stderr, "PUT: failed for unknown reason!\n");
   result = PUT_FAILED;
   return (&result);
@@ -141,6 +152,9 @@ int * del_1_svc(char **key, struct svc_req *req) {
     return (&result);
   }
 
+  // passed all of our input validation checks -- will now get lock before preceeding to CS
+  pthread_mutex_lock(&lock);
+
   for (i = 0; i < NextSlot; i++) {
     if (!strcmp(KvStore[i][0], *key)) {
       fprintf(stdout, "DEL: key=\"%s\", value=\"%s\"\n", *key, KvStore[i][1]);
@@ -155,7 +169,8 @@ int * del_1_svc(char **key, struct svc_req *req) {
       }
 
       NextSlot--;
-      
+      // completed action in CS and releases lock
+      pthread_mutex_unlock(&lock);
       result = DEL_OK;
       return (&result);
     }
@@ -163,11 +178,15 @@ int * del_1_svc(char **key, struct svc_req *req) {
 
   if (i == NextSlot) {
     fprintf(stderr, "DEL: key=\"%s\" not found\n", *key);
+    // was unable to complete an action and releases lock
+    pthread_mutex_unlock(&lock);
     result = DEL_KEY_NOT_FOUND;
     return (&result);
   }
 
   fprintf(stderr, "DEL: failed for unknown reason!\n");
+  // was unable to complete an action and releases lock
+  pthread_mutex_unlock(&lock);
   result = DEL_FAILED;
   return (&result);
 }
