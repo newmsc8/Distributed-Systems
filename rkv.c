@@ -5,6 +5,7 @@
 #include "kv.h"
 #include "kv_proto.h"
 
+// Map response code to text for GET and DEL
 const char* ResponseText[] = {
   "succeeded",
   "failed",
@@ -14,6 +15,7 @@ const char* ResponseText[] = {
   "key value store is empty"
 };
 
+// Map response code to text for PUT
 const char* PutResponseText[] = {
   "succeeded",
   "failed",
@@ -30,24 +32,29 @@ void put(CLIENT *clnt, char *key, char *value) {
   KeyValue kv;
   int *result;
 
+  // Allocate memory for key 
   kv.key = malloc((strlen(key) + 1) * sizeof(char));
 
   if (kv.key == NULL) {
     fprintf(stderr, "PUT: client error: memory allocation failure\n");
-    exit(1);
+    exit(1); // Exit on memory allocation failure
   }
 
+  // Copy key to allocated memory
   strcpy(kv.key, key);
 
+  // Allocate memory for value
   kv.value = malloc((strlen(value) + 1) * sizeof(char));
 
   if (kv.value == NULL) {
     fprintf(stderr, "PUT: client error: memory allocation failure\n");
-    exit(1);
+    exit(1); // Exit on memory allocation failure
   }
 
+  // Copy value to allocated memory
   strcpy(kv.value, value);
 
+  // Perform PUT
   result = put_1(&kv, clnt);
 
   if (result == (int *)NULL) {
@@ -56,8 +63,8 @@ void put(CLIENT *clnt, char *key, char *value) {
   }
 
   fprintf(stdout, "PUT: server response: %s (%d)\n", PutResponseText[*result], *result);
-  free(kv.key);
-  free(kv.value);
+  free(kv.key); // Free memory for key
+  free(kv.value); // Free memory for value
 }
 
 void get(CLIENT *clnt, char *key) {
@@ -73,6 +80,7 @@ void get(CLIENT *clnt, char *key) {
 
   strcpy(kv_key, key);
 
+  // Perform GET
   result = get_1(&kv_key, clnt);
 
   if (result == (GetReply *)NULL) {
