@@ -194,7 +194,7 @@ int sendToServer(int argc, char **argv) {
   clnt_destroy(clnt);
   return 0;
 }
-/*
+
 int main(){
     char* arg1[5] = {"","127.0.0.1","PUT","carrot","[orange]",};
     char* arg2[4] = {"","127.0.0.1","GET","carrot"};
@@ -235,4 +235,4 @@ int main(){
     sendToServer(5, arg13);
     sendToServer(4, arg14);
     sendToServer(4, arg15);
-}*/
+}
