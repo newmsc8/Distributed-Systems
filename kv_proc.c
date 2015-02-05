@@ -2,12 +2,14 @@
 #include <pthread.h>
 #include "kv.h"
 #include "kv_proto.h"
-
+#include <unistd.h>
+#include <string.h>
 char KvStore[KVSTORE_CAPACITY][2][MAX_LENGTH];
 int NextSlot;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; // initialize lock statically at declaration
-
-int * put_1_svc(KeyValue *kv, struct svc_req *req) {
+pthread_t thread_pool[4];
+void * put_kv(void* args){
+    KeyValue *kv = (KeyValue*)args;
   static int result; /* must be static */
   int i;
 
@@ -80,12 +82,18 @@ int * put_1_svc(KeyValue *kv, struct svc_req *req) {
   result = PUT_FAILED;
   return (&result);
 }
-
-GetReply * get_1_svc(char **key, struct svc_req *req) {
+int * put_1_svc(KeyValue *kv, struct svc_req *req) {
+    pthread_t th;
+    pthread_create(&th, NULL, put_kv, kv);
+    int *res;
+    pthread_join(th, (void*)&res);
+    return res;
+}
+void* get_kv(void* args){
+    char **key = (char**)args;
   static GetReply result; /* must be static */
   static char buffer[MAX_LENGTH]; /* must be static */
   int i;
-
   if (result.value == NULL) {
     result.value = buffer;
   }
@@ -129,8 +137,15 @@ GetReply * get_1_svc(char **key, struct svc_req *req) {
   result.code = GET_FAILED;
   return (&result);
 }
-
-int * del_1_svc(char **key, struct svc_req *req) {
+GetReply * get_1_svc(char **key, struct svc_req *req) {
+    pthread_t th;
+    pthread_create(&th, NULL, get_kv, key);
+    GetReply *res;
+    pthread_join(th, (void*)&res);
+    return res;
+}
+void* del_kv(void* arg){
+    char** key = (char**)arg;
   static int result; /* must be static */
   int i;
 
@@ -188,5 +203,12 @@ int * del_1_svc(char **key, struct svc_req *req) {
   // was unable to complete an action and releases lock
   pthread_mutex_unlock(&lock);
   result = DEL_FAILED;
-  return (&result);
+  return (void*)(&result);
+}
+int * del_1_svc(char **key, struct svc_req *req) {
+    pthread_t th;
+    pthread_create(&th, NULL, del_kv, key);
+    int *res;
+    pthread_join(th, (void*)&res);
+    return res;
 }

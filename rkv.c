@@ -115,7 +115,7 @@ void del(CLIENT *clnt, char *key) {
   free(kv_key);
 }
 
-int main(int argc, char **argv) {
+int sendToServer(int argc, char **argv) {
   CLIENT *clnt;
   int *result;
   char *server;
@@ -186,3 +186,45 @@ int main(int argc, char **argv) {
   clnt_destroy(clnt);
   return 0;
 }
+/*
+int main(){
+    char* arg1[5] = {"","127.0.0.1","PUT","carrot","[orange]",};
+    char* arg2[4] = {"","127.0.0.1","GET","carrot"};
+    char* arg3[4] = {"","127.0.0.1","DEL","carrot"};
+    
+    char* arg4[5] = {"","127.0.0.1","PUT","apple","[red]",};
+    char* arg5[4] = {"","127.0.0.1","GET","apple"};
+    char* arg6[4] = {"","127.0.0.1","DEL","apple"};
+    
+    char* arg7[5] = {"","127.0.0.1","PUT","banana","[yellow]",};
+    char* arg8[4] = {"","127.0.0.1","GET","banana"};
+    char* arg9[4] = {"","127.0.0.1","DEL","banana"};
+    
+    char* arg10[5] = {"","127.0.0.1","PUT","grapes","[purple]",};
+    char* arg11[4] = {"","127.0.0.1","GET","grapes"};
+    char* arg12[4] = {"","127.0.0.1","DEL","grapes"};
+    
+    char* arg13[5] = {"","127.0.0.1","PUT","kiwi","[green]",};
+    char* arg14[4] = {"","127.0.0.1","GET","kiwi"};
+    char* arg15[4] = {"","127.0.0.1","DEL","kiwi"};
+
+    sendToServer(5, arg1);
+    sendToServer(4, arg2);
+    sendToServer(4, arg3);
+    
+    sendToServer(5, arg4);
+    sendToServer(4, arg5);
+    sendToServer(4, arg6);
+    
+    sendToServer(5, arg7);
+    sendToServer(4, arg8);
+    sendToServer(4, arg9);
+    
+    sendToServer(5, arg10);
+    sendToServer(4, arg11);
+    sendToServer(4, arg12);
+    
+    sendToServer(5, arg13);
+    sendToServer(4, arg14);
+    sendToServer(4, arg15);
+}*/
