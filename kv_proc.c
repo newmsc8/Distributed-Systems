@@ -6,6 +6,9 @@
 #include <string.h>
 char KvStore[KVSTORE_CAPACITY][2][MAX_LENGTH];
 int NextSlot;
+
+char KvStore[KVSTORE_CAPACITY][2][MAX_LENGTH]; // In memory key value store
+int NextSlot; // Number of key value pairs
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; // initialize lock statically at declaration
 pthread_t thread_pool[4];
 void * put_kv(void* args){
@@ -175,7 +178,7 @@ void* del_kv(void* arg){
       fprintf(stdout, "DEL: key=\"%s\", value=\"%s\"\n", *key, KvStore[i][1]);
 
       //
-      // Compaction.
+      // Compaction
       //
 
       if (i < (NextSlot - 1)) {
