@@ -160,7 +160,7 @@ int * del_1_svc(char **key, struct svc_req *req) {
       fprintf(stdout, "DEL: key=\"%s\", value=\"%s\"\n", *key, KvStore[i][1]);
 
       //
-      // Compaction.
+      // Compaction
       //
 
       if (i < (NextSlot - 1)) {
