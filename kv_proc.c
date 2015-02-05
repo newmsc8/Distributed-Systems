@@ -3,8 +3,8 @@
 #include "kv.h"
 #include "kv_proto.h"
 
-char KvStore[KVSTORE_CAPACITY][2][MAX_LENGTH];
-int NextSlot;
+char KvStore[KVSTORE_CAPACITY][2][MAX_LENGTH]; // In memory key value store
+int NextSlot; // Number of key value pairs
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; // initialize lock statically at declaration
 
 int * put_1_svc(KeyValue *kv, struct svc_req *req) {
