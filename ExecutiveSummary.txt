@@ -2,10 +2,16 @@ Stacey Newman
 Moushumi Maria
 Diana Gorun
 
-Assignment Overview(250 words) - purpose and scope of the assignment
+Assignment Overview
 
 The purpose of the second assignment is to incorporate RPC, multi-threading, and mutual exclusion into our server/client programs previously written in assignment 1. Remote Procedure Calls (RPCs) enable the client to perform actions as though the necessary code was part of the client. This allows the client to use the functions located on the server and manipulate data on the server without requiring the client to understand the server's network details. In addition to incorporating an RPC structure, we have also included multithreading on the server side. This addition allows the server to handle multiple requests from multiple different clients involving the same data (in our case, the key value store). Previously, our server could only handle 1 client request at a time and therefore only 1 request would be manipulating the key value store. Now that multiple threads may be trying to access the same data, we had to include mutual exclusion to our code. We initialize a lock which is required for any thread to perform a put or delete function since these actions would manipulate the shared key value store.
 
 While there are many multithreading implementation options, this group chose to implement thread pools. This choice was made in light of ease of implementation as well as the frequency of their use in real world applications. A key short-coming of our implementation is not requiring a lock for any get request. This leaves us open to the scenario where a get returns an invalid response to the corresponding client because a put or delete on the same data has not completed. However, requiring a lock for the get request would cause a slow down for all get requests to prevent against this scenario and therefore our group decided against requiring a lock for get requests.
 
-Technical Impression (200–500 words) describing your experiences while carrying out the assignment
+Technical Impression
+
+While carrying out the project, the team was exposed to new techniques as well as reintroduced to previous ones. The use of rpcgen, for example, is not something previously used and learning the syntax and other requirements was new to the team. On the other hand, the idea of threads and mutex variables was not new, but had not been seen since undergraduate classes and reintegrating these things into the program required dusting off some older education.
+
+We continued to use the C programming language and this integrated quite well with using rpcgen and of course has the pthread class available for threading and mutex variables. We provided a readme.txt to explain the role of different files and how to compile different elements and what order this should be done in. We also included a script kv.sh to complete this process. In addition, we wrote a script to perform a series of client actions as well as a sample output of performing these actions. 
+
+This program felt like a drastic change from the work done in Project 1 and required members to really look into different tools provided to them by the C programming language and for the most part most of the code produced during Project 1 was discarded in the process of integrating RPCs.
