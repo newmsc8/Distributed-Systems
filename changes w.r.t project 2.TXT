@@ -1,97 +1,45 @@
-{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
-{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fswiss\fcharset0 ArialMT;\f2\fnil\fcharset0 HelveticaNeue;
-\f3\fmodern\fcharset0 Courier;}
-{\colortbl;\red255\green255\blue255;\red26\green26\blue26;\red255\green255\blue255;\red26\green26\blue26;
-\red38\green38\blue38;}
-\margl1440\margr1440\vieww10800\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
 
-\f0\fs24 \cf0 \
-\pard\pardeftab720
+kv_proc_r.c // renamed and edited
+kv_proto.h // unchanged
+kv_r.sh // renamed and edited
+kv.x // edited
+readme.txt // edited
+rkv.c // unchanged
 
-\f1\fs26 \cf2 \cb3 kv_proc_r.c // renamed and edited\
-kv_proto.h // unchanged\
-kv_r.sh // renamed and edited\
-kv.x // edited\
-readme.txt // edited\
-rkv.c // unchanged\
-\
 
-\f0\fs24 \cf0 \cb1 \
-\pard\pardeftab720
+(a) >> Replicate your Key-Value Store Server across 5 distinct servers.
+<< We'll have the same server program running on five different servers with different IP addresses. There will be no master /slave concept. Every server will be a replica.
 
-\f1\fs26 \cf4 (a) >>\'a0
-\f2 \cf5 Replicate your Key-Value Store Server across 5 distinct servers.
-\f1 \cf4 \
-<< We'll have the same server program running on five different servers with different IP addresses. There will be no master /slave concept. Every server will be a replica.\
-\
-(b) >>\'a0
-\f2 \cf5 Note that your client code should not have to change radically, only in that your clients should be able to contact any of the five KV replica servers instead of a single server and ...
-\f1 \cf4 \
-\pard\pardeftab720\sl400
+(b) >> Note that your client code should not have to change radically, only in that your clients should be able to contact any of the five KV replica servers instead of a single server and ...
+<< The client will be kept identical to project 2. It required an IP address / host name as one of its command line argument in addition to other arguments for performing the actual KV-store query/edit. Now that IP address can be any of the replicas.
 
-\f2 \cf5 << The client will be kept identical to project 2. It required an IP address / host name as one of its command line argument in addition to other arguments for performing the actual KV-store query/edit. Now that IP address can be any of the replicas.
-\f1 \cf4 \
+(c) >>  On PUT or DELETE operations you need to ensure each of the replicated KV stores at each replica is consistent.
+<< On each operation, a replica will perform it on its own (in memory) database first. If this operation is successful, then this server/replica program will start communicating to other replicas/servers a if it were a client. If this server sees that the same operation also succeeds on other replicas then it will call it an overall success.
+<< Note that in order to keep things simple, only forward operations will be performed. That means if a sequence of operation succeed, then the entire operation will be announced as succeeded. However if among five operations (one local and four on other replicas), one fails, then the entire operation will be announced as a failure; but no rollback will be attempted for the first and second operations, if for example, the third operation fails.
 
-\f2 \cf5 \
-(c) >>\'a0\'a0On PUT or DELETE operations you need to ensure each of the replicated KV stores at each replica is consistent.
-\f1 \cf4 \
+(d) << Server will now have command line argument. the first one will be the number of replica. and the following are IP address / host names of the replicas.
 
-\f2 \cf5 << On each operation, a replica will perform it on its own (in memory) database first. If this operation is successful, then this server/replica program will start communicating to other replicas/servers a if it were a client. If this server sees that the same operation also succeeds on other replicas then it will call it an overall success.
-\f1 \cf4 \
-\pard\pardeftab720
-\cf4 << Note that in order to keep things simple, only forward operations will be performed. That means if a sequence of operation succeed, then the entire operation will be announced as succeeded. However if among five operations (one local and four on other replicas), one fails, then the entire operation will be announced as a failure; but no rollback will be attempted for the first and second operations, if for example, the third operation fails.\
-\
-(d) << Server will now have command line argument. the first one will be the number of replica. and the following are IP address / host names of the replicas.\
-\
-(e) << The client server protocol can be kept identical for this project. One nice to have thing would be extend this protocol and be able to respond to the client with a set of IP addresses of other replicas. That way client could start knowing about only one IP address / host name to start with but eventually would get multiple options to connect to. \
-\
-(f) << conceptual summary\
-\
-\
-\pard\pardeftab720
+(e) << The client server protocol can be kept identical for this project. One nice to have thing would be extend this protocol and be able to respond to the client with a set of IP addresses of other replicas. That way client could start knowing about only one IP address / host name to start with but eventually would get multiple options to connect to. 
 
-\f3 \cf4 PREVIOUS
-\f1 \
+(f) << conceptual summary
 
-\f3 \
+
+PREVIOUS
+
 client		server
-\f1 \
+------		------
+put_1()		put_1_svc()
 
-\f3 ------		------
-\f1 \
 
-\f3 put_1()		put_1_svc()
-\f1 \
-
-\f3 \
-\
 NOW
-\f1 \
 
-\f3 \
 client		replica/servingClient		replica/other
-\f1 \
+------		---------------------		-------------
+put_1()		put_1_svc() {
+			local_put()
+			rput_1() // *		rput_1_svc() {
+		}					local_put()
+						}
 
-\f3 ------		---------------------		-------------
-\f1 \
 
-\f3 put_1()		put_1_svc() \{
-\f1 \
-
-\f3 			local_put()
-\f1 \
-
-\f3 			rput_1() // *		rput_1_svc() \{
-\f1 \
-
-\f3 		\}					local_put()
-\f1 \
-
-\f3 						\}\
-\
-\pard\pardeftab720
-
-\f1 \cf4 \
-(g) << no command line arg for server. replica names / ip addresses will be in "replica" file\
-}
+(g) << no command line arg for server. replica names / ip addresses will be in "replica" file
