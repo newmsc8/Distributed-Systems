@@ -5,7 +5,6 @@
 #include "kv.h"
 #include "kv_proto.h"
 
-// Map response code to text for GET and DEL
 const char* ResponseText[] = {
   "succeeded",
   "failed",
@@ -15,7 +14,6 @@ const char* ResponseText[] = {
   "key value store is empty"
 };
 
-// Map response code to text for PUT
 const char* PutResponseText[] = {
   "succeeded",
   "failed",
@@ -32,29 +30,24 @@ void put(CLIENT *clnt, char *key, char *value) {
   KeyValue kv;
   int *result;
 
-  // Allocate memory for key 
   kv.key = malloc((strlen(key) + 1) * sizeof(char));
 
   if (kv.key == NULL) {
     fprintf(stderr, "PUT: client error: memory allocation failure\n");
-    exit(1); // Exit on memory allocation failure
+    exit(1);
   }
 
-  // Copy key to allocated memory
   strcpy(kv.key, key);
 
-  // Allocate memory for value
   kv.value = malloc((strlen(value) + 1) * sizeof(char));
 
   if (kv.value == NULL) {
     fprintf(stderr, "PUT: client error: memory allocation failure\n");
-    exit(1); // Exit on memory allocation failure
+    exit(1);
   }
 
-  // Copy value to allocated memory
   strcpy(kv.value, value);
 
-  // Perform PUT
   result = put_1(&kv, clnt);
 
   if (result == (int *)NULL) {
@@ -63,8 +56,8 @@ void put(CLIENT *clnt, char *key, char *value) {
   }
 
   fprintf(stdout, "PUT: server response: %s (%d)\n", PutResponseText[*result], *result);
-  free(kv.key); // Free memory for key
-  free(kv.value); // Free memory for value
+  free(kv.key);
+  free(kv.value);
 }
 
 void get(CLIENT *clnt, char *key) {
@@ -80,7 +73,6 @@ void get(CLIENT *clnt, char *key) {
 
   strcpy(kv_key, key);
 
-  // Perform GET
   result = get_1(&kv_key, clnt);
 
   if (result == (GetReply *)NULL) {
@@ -123,7 +115,7 @@ void del(CLIENT *clnt, char *key) {
   free(kv_key);
 }
 
-int sendToServer(int argc, char **argv) {
+int main(int argc, char **argv) {
   CLIENT *clnt;
   int *result;
   char *server;
@@ -193,46 +185,4 @@ int sendToServer(int argc, char **argv) {
 
   clnt_destroy(clnt);
   return 0;
-}
-
-int main(){
-    char* arg1[5] = {"","127.0.0.1","PUT","carrot","[orange]",};
-    char* arg2[4] = {"","127.0.0.1","GET","carrot"};
-    char* arg3[4] = {"","127.0.0.1","DEL","carrot"};
-    
-    char* arg4[5] = {"","127.0.0.1","PUT","apple","[red]",};
-    char* arg5[4] = {"","127.0.0.1","GET","apple"};
-    char* arg6[4] = {"","127.0.0.1","DEL","apple"};
-    
-    char* arg7[5] = {"","127.0.0.1","PUT","banana","[yellow]",};
-    char* arg8[4] = {"","127.0.0.1","GET","banana"};
-    char* arg9[4] = {"","127.0.0.1","DEL","banana"};
-    
-    char* arg10[5] = {"","127.0.0.1","PUT","grapes","[purple]",};
-    char* arg11[4] = {"","127.0.0.1","GET","grapes"};
-    char* arg12[4] = {"","127.0.0.1","DEL","grapes"};
-    
-    char* arg13[5] = {"","127.0.0.1","PUT","kiwi","[green]",};
-    char* arg14[4] = {"","127.0.0.1","GET","kiwi"};
-    char* arg15[4] = {"","127.0.0.1","DEL","kiwi"};
-
-    sendToServer(5, arg1);
-    sendToServer(4, arg2);
-    sendToServer(4, arg3);
-    
-    sendToServer(5, arg4);
-    sendToServer(4, arg5);
-    sendToServer(4, arg6);
-    
-    sendToServer(5, arg7);
-    sendToServer(4, arg8);
-    sendToServer(4, arg9);
-    
-    sendToServer(5, arg10);
-    sendToServer(4, arg11);
-    sendToServer(4, arg12);
-    
-    sendToServer(5, arg13);
-    sendToServer(4, arg14);
-    sendToServer(4, arg15);
 }

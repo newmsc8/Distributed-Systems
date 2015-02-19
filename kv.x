@@ -20,5 +20,9 @@ program KVPROGRAM {
     int PUT(KeyValue) = 1;
     GetReply GET(string) = 2;
     int DEL(string) = 3;
+
+    int RPUT(KeyValue) = 4;
+    GetReply RGET(string) = 5;
+    int RDEL(string) = 6;
   } = VERSION_NUMBER;
 } = PROGRAM_NUMBER;
