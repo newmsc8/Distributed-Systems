@@ -32,4 +32,5 @@ Script:
 
 Other files:
    readme.txt // this file
+   replica //list of ip addresses of other server instances (EXCLUSIVE of othe one it is hosted on)
 
