@@ -24,5 +24,8 @@ program KVPROGRAM {
     int RPUT(KeyValue) = 4;
     GetReply RGET(string) = 5;
     int RDEL(string) = 6;
+
+    int VOTE_PUT(KeyValue) = 7;
+    int VOTE_DEL(string) = 8;
   } = VERSION_NUMBER;
 } = PROGRAM_NUMBER;

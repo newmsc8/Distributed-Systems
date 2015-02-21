@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
+
 #include "kv.h"
 #include "kv_proto.h"
 
@@ -28,11 +28,9 @@ const char* PutResponseText[] = {
 };
 
 char KvStore[KVSTORE_CAPACITY][2][MAX_LENGTH];
-
 int NextSlot;
 
 char ReplicaName[MAX_REPLICA][MAX_LENGTH];
-
 int ReplicaCount;
 
 CLIENT *Replica[MAX_REPLICA];
@@ -141,43 +139,6 @@ int rput(CLIENT *clnt, char *key, char *value) {
   return *result;
 }
 
-int vote(CLIENT *clnt) {
-    char *kv_key;
-    char* key = "vote";
-    GetReply *result;
-    
-    kv_key = malloc((strlen(key) + 1) * sizeof(char));
-    
-    if (kv_key == NULL) {
-        fprintf(stderr, "ACK: server error: memory allocation failure\n");
-        return VOTE_NO;
-    }
-    
-    strcpy(kv_key, key);
-    
-    result = rget_1(&kv_key, clnt);
-    
-    if (result == (GetReply *)NULL) {
-        clnt_perror(clnt, "ACK: rpc error");
-        
-        free(kv_key);
-        return VOTE_NO;
-    }
-    
-    fprintf(stdout, "ACK: replication response: %s (%d)", ResponseText[result->code],  result->code);
-    
-    if (result->code == GET_OK) {
-        fprintf(stdout, "; value = OK");
-    } else {
-        fprintf(stdout, "\n");
-        free(kv_key);
-        return VOTE_NO;
-    }
-    
-    free(kv_key);
-    return VOTE_YES;
-}
-
 int rget(CLIENT *clnt, char *key, char *refValue) {
   char *kv_key;
   GetReply *result;
@@ -261,26 +222,63 @@ int * put_1_svc(KeyValue *kv, struct svc_req *req) {
   static int result; /* must be static */
   int i;
 
-  result = *rput_1_svc(kv, req);
+  //
+  // First check if the PUT operation is viable on this replica.
+  //
 
-  if (result != PUT_OK) {
+  result = *vote_put_1_svc(kv, req); // local call.
+
+  if (result == PUT_VOTE_NO) {
+
+    //
+    // The PUT operation is not viable locally. No need to talk to other replicas.
+    // Client will see PUT_FAILED
+    // Because PUT_VOTE_NO == PUT_FAILED
+    //
+    
     return (&result);
   }
 
   replicate_begin();
-    for (i = 0; i < ReplicaCount; i++) {
-        if ((result = vote(Replica[i])) != VOTE_YES) {
-            replicate_end();
-            return (&result);
-        }
+
+  //
+  // Ask for vote from other replicas.
+  // If any of the replica votes NO then the operation fails.
+  //
+
+  for (i = 0; i < ReplicaCount; i++) {
+    if ((result = *vote_put_1(kv, Replica[i]) /* rpc */) == PUT_VOTE_NO) {
+      replicate_end();
+      return (&result); 
     }
-    
+  }
+
+  //
+  // Every replica has voted YES.
+  //
+
+  //
+  // Do local PUT.
+  //
+
+  result = *rput_1_svc(kv, req); // local call.
+
+  if (result != PUT_OK) {
+    replicate_end();
+    return (&result);
+  }
+
+  //
+  // Do remote PUT (replicate).
+  //
+
   for (i = 0; i < ReplicaCount; i++) {
     if ((result = rput(Replica[i], kv->key, kv->value)) != PUT_OK) {
       replicate_end();
       return (&result); 
     }
   }
+
   replicate_end();
 
   return (&result);
@@ -318,19 +316,56 @@ int * del_1_svc(char **key, struct svc_req *req) {
   static int result; /* must be static */
   int i;
 
-  result = *rdel_1_svc(key, req);
+  //
+  // First check if the DEL operation is viable on this replica.
+  //
 
-  if (result != DEL_OK) {
+  result = *vote_del_1_svc(key, req); // local call.
+
+  if (result == DEL_VOTE_NO) {
+
+    //
+    // The DEL operation is not viable locally. No need to talk to other replicas.
+    // Client will see DEL_FAILED
+    // Because DEL_VOTE_NO == DEL_FAILED
+    //
+    
     return (&result);
   }
 
   replicate_begin();
-    for (i = 0; i < ReplicaCount; i++) {
-        if ((result = vote(Replica[i])) != VOTE_YES) {
-            replicate_end();
-            return (&result);
-        }
+
+  //
+  // Ask for vote from other replicas.
+  // If any of the replica votes NO then the operation fails.
+  //
+
+  for (i = 0; i < ReplicaCount; i++) {
+    if ((result = *vote_del_1(key, Replica[i]) /* rpc */) == DEL_VOTE_NO) {
+      replicate_end();
+      return (&result); 
     }
+  }
+
+  //
+  // Every replica has voted YES.
+  //
+
+  //
+  // Do local DEL.
+  //
+
+  result = *rdel_1_svc(key, req); // local call.
+
+  if (result != DEL_OK) {
+    replicate_end();
+    return (&result);
+  }
+
+  //
+  // Do remote DEL (replicate).
+  //
+
   for (i = 0; i < ReplicaCount; i++) {
     if ((result = rdel(Replica[i], *key)) != DEL_OK) {
       replicate_end();
@@ -339,7 +374,7 @@ int * del_1_svc(char **key, struct svc_req *req) {
   }
 
   replicate_end();
-  
+
   return (&result);
 }
 
@@ -424,19 +459,13 @@ GetReply * rget_1_svc(char **key, struct svc_req *req) {
     result.code = GET_KEY_IS_NULL;
     return (&result);
   }
-    if (!strcmp(KvStore[i][0], "vote")) {
-        fprintf(stdout, "ACK: OK");
-        strcpy(result.value, "OK");
-        result.code = GET_OK;
-        return (&result);
-    }
-    
+
   if (strlen(*key) + 1 >= MAX_LENGTH) {
     fprintf(stderr, "GET: key is too large\n");
     result.code = GET_KEY_IS_TOO_LARGE;
     return (&result);
   }
-    
+
   if (NextSlot == 0) {
     fprintf(stderr, "GET: key value store is empty\n");
     result.code = GET_KVSTORE_IS_EMPTY;
@@ -513,5 +542,105 @@ int * rdel_1_svc(char **key, struct svc_req *req) {
 
   fprintf(stderr, "DEL: failed for unknown reason!\n");
   result = DEL_FAILED;
+  return (&result);
+}
+
+//
+// This function will assess the viability of performing a PUT operation
+// based on the provided input instead of actually performing the operation.
+// It will either return PUT_VOTE_YES or PUT_VOTE_NO.
+//
+
+int * vote_put_1_svc(KeyValue *kv, struct svc_req *req) {
+  static int result; /* must be static */
+  int i;
+
+  if (kv == NULL) {
+    fprintf(stderr, "PUT VOTE: null key value pair\n");
+    result = PUT_VOTE_NO;
+    return (&result);
+  }
+
+  if (kv->key == NULL) {
+    fprintf(stderr, "PUT VOTE: key is null\n");
+    result = PUT_VOTE_NO;
+    return (&result);
+  }
+
+  if (strlen(kv->key) + 1 >= MAX_LENGTH) {
+    fprintf(stderr, "PUT VOTE: key is too large\n");
+    result = PUT_VOTE_NO;
+    return (&result);
+  }
+
+  if (kv->value == NULL) {
+    fprintf(stderr, "PUT VOTE: value is null\n");
+    result = PUT_VOTE_NO;
+    return (&result);
+  }
+
+  if (strlen(kv->value) + 1 >= MAX_LENGTH) {
+    fprintf(stderr, "PUT VOTE: value is too large\n");
+    result = PUT_VOTE_NO;
+    return (&result);
+  }
+
+  if (NextSlot == KVSTORE_CAPACITY) {
+    fprintf(stderr, "PUT VOTE: key value store is out of capacity\n");
+    result = PUT_VOTE_NO;
+    return (&result);
+  }
+  
+  fprintf(stderr, "PUT VOTE: YES\n");
+  result = PUT_VOTE_YES;
+
+  return (&result);
+}
+
+//
+// This function will assess the viability of performing a DEL operation
+// based on the provided input instead of actually performing the operation.
+// It will either return DEL_VOTE_YES or DEL_VOTE_NO.
+//
+
+int * vote_del_1_svc(char **key, struct svc_req *req) {
+  static int result; /* must be static */
+  int i;
+
+  if ((key == NULL) || (*key == NULL)) {
+    fprintf(stderr, "DEL VOTE: key is null\n");
+    result = DEL_VOTE_NO;
+    return (&result);
+  }
+
+  if (strlen(*key) + 1 >= MAX_LENGTH) {
+    fprintf(stderr, "DEL VOTE: key is too large\n");
+    result = DEL_VOTE_NO;
+    return (&result);
+  }
+
+  if (NextSlot == 0) {
+    fprintf(stderr, "DEL VOTE: key value store is empty\n");
+    result = DEL_VOTE_NO;
+    return (&result);
+  }
+
+  for (i = 0; i < NextSlot; i++) {
+    if (!strcmp(KvStore[i][0], *key)) {
+      fprintf(stdout, "DEL VOTE: key=\"%s\", value=\"%s\"\n", *key, KvStore[i][1]);
+      fprintf(stdout, "DEL VOTE: YES\n");
+      result = DEL_VOTE_YES;
+      return (&result);
+    }
+  }
+
+  if (i == NextSlot) {
+    fprintf(stderr, "DEL VOTE: key=\"%s\" not found\n", *key);
+    result = DEL_VOTE_NO;
+    return (&result);
+  }
+
+  fprintf(stderr, "DEL VOTE: failed for unknown reason!\n");
+  result = DEL_VOTE_NO;
   return (&result);
 }
