@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-
+#include <stdlib.h>
 #include "kv.h"
 #include "kv_proto.h"
 
@@ -28,9 +28,11 @@ const char* PutResponseText[] = {
 };
 
 char KvStore[KVSTORE_CAPACITY][2][MAX_LENGTH];
+
 int NextSlot;
 
 char ReplicaName[MAX_REPLICA][MAX_LENGTH];
+
 int ReplicaCount;
 
 CLIENT *Replica[MAX_REPLICA];
@@ -139,6 +141,43 @@ int rput(CLIENT *clnt, char *key, char *value) {
   return *result;
 }
 
+int vote(CLIENT *clnt) {
+    char *kv_key;
+    char* key = "vote";
+    GetReply *result;
+    
+    kv_key = malloc((strlen(key) + 1) * sizeof(char));
+    
+    if (kv_key == NULL) {
+        fprintf(stderr, "ACK: server error: memory allocation failure\n");
+        return VOTE_NO;
+    }
+    
+    strcpy(kv_key, key);
+    
+    result = rget_1(&kv_key, clnt);
+    
+    if (result == (GetReply *)NULL) {
+        clnt_perror(clnt, "ACK: rpc error");
+        
+        free(kv_key);
+        return VOTE_NO;
+    }
+    
+    fprintf(stdout, "ACK: replication response: %s (%d)", ResponseText[result->code],  result->code);
+    
+    if (result->code == GET_OK) {
+        fprintf(stdout, "; value = OK");
+    } else {
+        fprintf(stdout, "\n");
+        free(kv_key);
+        return VOTE_NO;
+    }
+    
+    free(kv_key);
+    return VOTE_YES;
+}
+
 int rget(CLIENT *clnt, char *key, char *refValue) {
   char *kv_key;
   GetReply *result;
@@ -229,14 +268,19 @@ int * put_1_svc(KeyValue *kv, struct svc_req *req) {
   }
 
   replicate_begin();
-
+    for (i = 0; i < ReplicaCount; i++) {
+        if ((result = vote(Replica[i])) != VOTE_YES) {
+            replicate_end();
+            return (&result);
+        }
+    }
+    
   for (i = 0; i < ReplicaCount; i++) {
     if ((result = rput(Replica[i], kv->key, kv->value)) != PUT_OK) {
       replicate_end();
       return (&result); 
     }
   }
-
   replicate_end();
 
   return (&result);
@@ -281,7 +325,12 @@ int * del_1_svc(char **key, struct svc_req *req) {
   }
 
   replicate_begin();
-
+    for (i = 0; i < ReplicaCount; i++) {
+        if ((result = vote(Replica[i])) != VOTE_YES) {
+            replicate_end();
+            return (&result);
+        }
+    }
   for (i = 0; i < ReplicaCount; i++) {
     if ((result = rdel(Replica[i], *key)) != DEL_OK) {
       replicate_end();
@@ -375,13 +424,19 @@ GetReply * rget_1_svc(char **key, struct svc_req *req) {
     result.code = GET_KEY_IS_NULL;
     return (&result);
   }
-
+    if (!strcmp(KvStore[i][0], "vote")) {
+        fprintf(stdout, "ACK: OK");
+        strcpy(result.value, "OK");
+        result.code = GET_OK;
+        return (&result);
+    }
+    
   if (strlen(*key) + 1 >= MAX_LENGTH) {
     fprintf(stderr, "GET: key is too large\n");
     result.code = GET_KEY_IS_TOO_LARGE;
     return (&result);
   }
-
+    
   if (NextSlot == 0) {
     fprintf(stderr, "GET: key value store is empty\n");
     result.code = GET_KVSTORE_IS_EMPTY;
@@ -460,4 +515,3 @@ int * rdel_1_svc(char **key, struct svc_req *req) {
   result = DEL_FAILED;
   return (&result);
 }
-
