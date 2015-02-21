@@ -1,0 +1,45 @@
+
+kv_proc_r.c // renamed and edited
+kv_proto.h // unchanged
+kv_r.sh // renamed and edited
+kv.x // edited
+readme.txt // edited
+rkv.c // unchanged
+
+
+(a) >> Replicate your Key-Value Store Server across 5 distinct servers.
+<< We'll have the same server program running on five different servers with different IP addresses. There will be no master /slave concept. Every server will be a replica.
+
+(b) >> Note that your client code should not have to change radically, only in that your clients should be able to contact any of the five KV replica servers instead of a single server and ...
+<< The client will be kept identical to project 2. It required an IP address / host name as one of its command line argument in addition to other arguments for performing the actual KV-store query/edit. Now that IP address can be any of the replicas.
+
+(c) >>  On PUT or DELETE operations you need to ensure each of the replicated KV stores at each replica is consistent.
+<< On each operation, a replica will perform it on its own (in memory) database first. If this operation is successful, then this server/replica program will start communicating to other replicas/servers a if it were a client. If this server sees that the same operation also succeeds on other replicas then it will call it an overall success.
+<< Note that in order to keep things simple, only forward operations will be performed. That means if a sequence of operation succeed, then the entire operation will be announced as succeeded. However if among five operations (one local and four on other replicas), one fails, then the entire operation will be announced as a failure; but no rollback will be attempted for the first and second operations, if for example, the third operation fails.
+
+(d) << Server will now have command line argument. the first one will be the number of replica. and the following are IP address / host names of the replicas.
+
+(e) << The client server protocol can be kept identical for this project. One nice to have thing would be extend this protocol and be able to respond to the client with a set of IP addresses of other replicas. That way client could start knowing about only one IP address / host name to start with but eventually would get multiple options to connect to. 
+
+(f) << conceptual summary
+
+
+PREVIOUS
+
+client		server
+------		------
+put_1()		put_1_svc()
+
+
+NOW
+
+client		replica/servingClient		replica/other
+------		---------------------		-------------
+put_1()		put_1_svc() {
+			local_put()
+			rput_1() // *		rput_1_svc() {
+		}					local_put()
+						}
+
+
+(g) << no command line arg for server. replica names / ip addresses will be in "replica" file

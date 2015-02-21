@@ -1,0 +1,17 @@
+Stacey Newman
+Moushumi Maria
+Diana Gorun
+
+Assignment Overview
+
+The purpose of the third assignment is to replicate our key value store across multiple servers. This allows us to increase server bandwidth as well as ensure availability up to a point. We will replicate our key value store across five distinct servers. This allows a client to contact any of the servers to perform the PUT, GET, or DELETE commands. We will not be using a master / slave concept, but will instead have the same server code running on all 5 servers. In implementing this change, our client code did not change, but now will be able to accept the IP address of any of the servers.
+
+We also must ensure consistency across our key value store. This requires a 2 Phase Commit protocol be enacted to ensure consistency across the servers on PUT or DELETE operations. We are assuming an ideal scenario where no servers will fail and therefore we are assuming that 2 Phase Commit will not stall. In the server code, consistent across all instances, PUT and DELETE operations first require a vote (okay signal) from all other replicas. The operation is then done locally, and if it is successful then the other server instances will perform the same operation. If all server instances are successful in implementing the operation we will report success. We are assuming an ideal situation in which no server will fail. To enable communication among replicas, the server code reads the IP/hostnames of other replicas from a local file called 'replica'.
+
+Technical Impression
+
+While the client code was consistent from project 1, many changes had to be made to the server code to allow communication between servers. Testing this communication was the biggest obstacle for the group in project 3. 
+
+Upon completion of this project we also noticed some potential optimizations that could be done to our code through future projects. For every operation, a new connection is being created to each replica, and right after competing the operation, this connection is being closed. We could futher optimize our code by keeing a connection alive for a while until it times out. We also see potential to optimize how the replica IP addresses are stored. Currently, replica IP addresses are being read from a file each time they are needed, but this could only be done once at the beginning. 
+
+This program required many changes to our server code, and therefore some of the changes made during project 2 were lost and we would like to reincorporate changes that were made during project 2 to further increase the capabilities of any 1 server. We also acknowledge the lack of any rollback in our server code. We have only incorporated forward operations, though further forward operations will hault when a failure is reported. Addressing this shortcominging is also on our radar.
