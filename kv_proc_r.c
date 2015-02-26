@@ -42,6 +42,9 @@ struct thread_data{
   CLIENT* clnt;
   KeyValue key_value;
 };
+pthread_t acceptor;
+pthread_t learner;
+pthread_t proposer;
 
 int read_replica_names_from_file() {
   FILE *f;
