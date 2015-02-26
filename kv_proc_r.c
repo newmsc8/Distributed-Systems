@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "kv.h"
 #include "kv_proto.h"
@@ -34,6 +35,13 @@ char ReplicaName[MAX_REPLICA][MAX_LENGTH];
 int ReplicaCount;
 
 CLIENT *Replica[MAX_REPLICA];
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; //initialize a lock
+struct thread_data{
+  char* key;
+  CLIENT* clnt;
+  KeyValue key_value;
+};
 
 int read_replica_names_from_file() {
   FILE *f;
@@ -97,6 +105,51 @@ void close_connection_to_replicas() {
   }
 }
 
+int * thread_put(void *threadargs) {
+  static int result;
+  struct thread_data *put_data;
+  KeyValue key_value;
+  CLIENT* clnt;
+  
+  put_data=(struct thread_data*)threadargs;
+  key_value=put_data->key_value;
+  clnt=put_data->clnt;
+
+  result=rput_1(&key_value,clnt);
+
+  return(&result);
+}
+
+int * thread_get(void *threadargs) {
+  static int result;
+  struct thread_data *get_data;
+  char* key;
+  CLIENT* clnt;
+  
+  get_data=(struct thread_data*)threadargs;
+  key=get_data->key;
+  clnt=get_data->clnt;
+
+  result=rget_1(&key,clnt);
+
+  return(&result);
+}
+
+int * thread_del(void *threadargs) {
+  static int result;
+  struct thread_data *del_data;
+  char* key;
+  CLIENT* clnt;
+  
+  del_data=(struct thread_data*)threadargs;
+  key=del_data->key;
+  clnt=del_data->clnt;
+
+  result=rdel_1(&key,clnt);
+
+  return(&result);
+}
+
 int rput(CLIENT *clnt, char *key, char *value) {
   KeyValue kv;
   int *result;
@@ -121,7 +174,23 @@ int rput(CLIENT *clnt, char *key, char *value) {
 
   strcpy(kv.value, value);
 
-  result = rput_1(&kv, clnt);
+  //about to perform delete function
+  //don't preceed until you get a lock
+  pthread_mutex_lock(&lock);
+
+  struct thread_data pth_data;
+  pth_data.key_value = kv;
+  pth_data.clnt = clnt;
+  pthread_t pth;
+  pthread_create(&pth,NULL,thread_put,(void*)&pth_data);
+  pthread_join(pth,(void*)&result);
+
+  //completed delete function
+  //release lock
+  pthread_mutex_unlock(&lock);
+
+  //result = rput_1(&kv, clnt);
+
 
   if (result == (int *)NULL) {
     clnt_perror(clnt, "PUT: rpc error");
@@ -152,7 +221,14 @@ int rget(CLIENT *clnt, char *key, char *refValue) {
 
   strcpy(kv_key, key);
 
-  result = rget_1(&kv_key, clnt);
+  struct thread_data pth_data;
+  pth_data.key = kv_key;
+  pth_data.clnt = clnt;
+  pthread_t pth;
+  pthread_create(&pth,NULL,thread_get,(void*)&pth_data);
+  pthread_join(pth,(void*)&result);
+
+  //result = rget_1(&kv_key, clnt);
 
   if (result == (GetReply *)NULL) {
     clnt_perror(clnt, "GET: rpc error");
@@ -193,8 +269,19 @@ int rdel(CLIENT *clnt, char *key) {
   }
 
   strcpy(kv_key, key);
+  
+  //about to perform delete function
+  //don't preceed until you get a lock
+  pthread_mutex_lock(&lock);
 
-  result = rdel_1(&kv_key, clnt);
+  struct thread_data pth_data;
+  pth_data.key = kv_key;
+  pth_data.clnt = clnt;
+  pthread_t pth;
+  pthread_create(&pth,NULL,thread_del,(void*)&pth_data);
+  pthread_join(pth,(void*)&result);
+
+  pthread_mutex_unlock(&lock);
 
   if (result == (int *)NULL) {
     clnt_perror(clnt, "DEL: rpc error");
@@ -217,6 +304,19 @@ void replicate_begin() {
 void replicate_end() {
   close_connection_to_replicas();
 }
+
+//int* del_thread(void* thread_args) {
+ // struct thread_data *my_data;
+  //my_data = (struct thread_data*)thread_args;
+
+  //char * key;
+  //struct svc_req* clnt;
+
+  //key = (char*)my_data->key;
+  //clnt = (struct svc_req*)my_data->clnt;
+  
+  //return rdel_1_svc(&key,clnt);
+//}
 
 int * put_1_svc(KeyValue *kv, struct svc_req *req) {
   static int result; /* must be static */
@@ -528,7 +628,6 @@ int * rdel_1_svc(char **key, struct svc_req *req) {
       }
 
       NextSlot--;
-      
       result = DEL_OK;
       return (&result);
     }
