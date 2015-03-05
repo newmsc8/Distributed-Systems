@@ -15,17 +15,24 @@ struct GetReply {
   Value value;
 };
 
+struct PrepReply {
+	int vote;
+	KeyValue kv;
+	Key key;
+	int n;
+};
+
 program KVPROGRAM {
   version KVVERSION {
     int PUT(KeyValue) = 1;
     GetReply GET(string) = 2;
     int DEL(string) = 3;
 
-    int RPUT(KeyValue) = 4;
-    GetReply RGET(string) = 5;
-    int RDEL(string) = 6;
+    GetReply RGET(string) = 4;
 
-    int VOTE_PUT(KeyValue) = 7;
-    int VOTE_DEL(string) = 8;
+    PrepReply ACCEPT_PREPARE_DEL(int) = 5;
+    PrepReply ACCEPT_PREPARE_PUT(int) = 6;
+    int ACCEPT_EXECUTE_DEL(char) = 7;
+    int ACCEPT_EXECUTE_PUT(KeyValue) = 8;
   } = VERSION_NUMBER;
 } = PROGRAM_NUMBER;

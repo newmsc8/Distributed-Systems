@@ -11,6 +11,9 @@
 #define DEL_VOTE_YES 0
 #define DEL_VOTE_NO 1
 
+#define PROMISE 1
+#define DENY 0
+
 #define GET_OK 0
 #define GET_FAILED 1
 #define GET_KEY_IS_NULL 2
