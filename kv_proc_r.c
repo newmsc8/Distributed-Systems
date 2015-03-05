@@ -49,6 +49,7 @@ Key acceptedKey=NULL;
 KeyValue acceptedKV={0};
 CLIENT *Replica[MAX_REPLICA];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; //initialize a lock
+const bool DISTINGUISHED = true;
 //read in the IP addresses of other servers from file titled 'replica'
 int read_replica_names_from_file() {
   FILE *f;
@@ -207,24 +208,29 @@ int * accept_execute_put(void* thread_data) {
     		result = PUT_KVSTORE_OUT_OF_CAPACITY;
     		return (&result);
   	}
+	pthread_mutex_lock(&lock);
   	for (i = 0; i < NextSlot; i++) {
     		if (!strcmp(KvStore[i][0], kv->key)) {
       			fprintf(stdout, "PUT: key=\"%s\", value=\"%s\", old_value=\"%s\"\n",kv->key, kv->value, KvStore[i][1]);
       			strcpy(KvStore[i][1], kv->value);
       			result = PUT_DUPLICATE_KEY_VALUE_RESET;
+			//pthread_mutex_unlock(&lock);
      			return (&result);
     		}
   	}
+	//pthread_mutex_lock(&lock);
   	if (i == NextSlot) {
     		fprintf(stdout, "PUT: key=\"%s\", value=\"%s\"\n",kv->key, kv->value);
     		strcpy(KvStore[i][0], kv->key);
     		strcpy(KvStore[i][1], kv->value);
     		NextSlot++;
     		result = PUT_OK;
+		//pthread_mutex_unlock(&lock);
     		return (&result);
   	}
   	fprintf(stderr, "PUT: failed for unknown reason!\n");
   	result = PUT_FAILED;
+	//pthread_mutex_unlock(&lock);
   	return (&result);
 }
 //execute delete request
@@ -252,6 +258,7 @@ int * accept_execute_del(void* thread_data) {
     		result = DEL_KVSTORE_IS_EMPTY;
     		return (&result);
   	}
+	//pthread_mutex_lock(&lock);
   	for (i = 0; i < NextSlot; i++) {
    		if (!strcmp(KvStore[i][0], key)) {
 			strcpy(KvStore[1][1],"test");
@@ -263,18 +270,19 @@ int * accept_execute_del(void* thread_data) {
       			}
       			NextSlot--;     
       			result = DEL_OK;
+			//pthread_mutex_unlock(&lock);
       			return (&result);
     		}
   	}
-	result = DEL_OK;
-	return(&result);
   	if (i == NextSlot) {
     		fprintf(stderr, "DEL: key=\"%s\" not found\n", *key);
     		result = DEL_KEY_NOT_FOUND;
+		//pthread_mutex_unlock(&lock);
     		return (&result);
   	}
   	fprintf(stderr, "DEL: failed for unknown reason!\n");
   	result = DEL_FAILED;
+	//pthread_mutex_unlock(&lock);
   	return (&result);
 }
 //call accept_prepare_put_1_svc() for a particular replica
@@ -522,6 +530,15 @@ int * thread_put_1_svc(void* thread_data) {
 	int* count;//number of OKs received
 	struct keyvalue_client *my_data;
 	my_data = (struct keyvalue_client*)thread_data;//key value and client the request came from
+	if(!DISTINGUISHED) {
+		replicate_begin();
+		KeyValue *kv;
+		kv = my_data->kv;
+		result = put_1(kv,Replica[1]);
+		replicate_end();
+		return_val = result;
+		return(&return_val);		
+	}
   	pthread_t proposer_thread;
 	CLIENT *clnt;
 	clnt = (CLIENT*)malloc(sizeof(clnt));
@@ -582,6 +599,12 @@ GetReply * get_1_svc(char **key, struct svc_req *req) {
   	static GetReply result; /* must be static */
   	int status;
   	int i; 
+	if(!DISTINGUISHED) {
+		replicate_begin();
+		result = *get_1(key,Replica[1]);
+		replicate_end();
+		return(&result);		
+	}
   	result = *rget_1_svc(key, req);
   	if (result.code != GET_OK) {
     		return (&result);
