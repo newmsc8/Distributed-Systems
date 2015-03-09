@@ -43,6 +43,8 @@ int NextSlot;
 char ReplicaName[MAX_REPLICA][MAX_LENGTH];
 int ReplicaCount;
 int PrepN = 1;
+int FailCap = 500;
+int FailTh = 498;
 int PromisedN = 0;
 int acceptedN = 0;
 Key acceptedKey=NULL;
@@ -140,36 +142,62 @@ void replicate_end() {
 }
 //get response to prepare request to put
 PrepReply * accept_prepare_put(void* thread_args) {
+    
+    srand((unsigned) time(NULL));
+    int i = rand()%FailCap;
+    if (i > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+    
+    fprintf(stdout, "accept_prepare_put\n");
 	struct PrepReq* request;
 	request = (struct PrepReq*)thread_args;
-	static struct PrepReply reply;
-	if((request->n)>PromisedN) {
-		reply.vote=PROMISE;
-		PromisedN = request->n;
+    struct PrepReply *reply;
+    reply = (PrepReply*)malloc(sizeof(*reply));
+    int n  = *request->n;
+	if(n >PromisedN) {
+		reply->vote=PROMISE;
+		PromisedN = *request->n;
 	} else {
-		reply.vote=DENY;
+		reply->vote=DENY;
 	}
-	reply.kv = acceptedKV;
-	reply.n = acceptedN;
-	return(&reply);
+	reply->kv = acceptedKV;
+	reply->n = acceptedN;
+     fprintf(stdout, "accept_prepare_put done\n");
+	return reply;
 }
 //get response to prepare request to delete
 PrepReply * accept_prepare_del(void* thread_args) {
+    srand((unsigned) time(NULL));
+    int i = rand()%FailCap;
+    if (i > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
 	struct PrepReq *request;
 	request = (struct PrepReq*)thread_args;
-	static struct PrepReply reply;
-	if((request->n)>PromisedN) {
-		reply.vote=PROMISE;
-		PromisedN = request->n;
+	struct PrepReply *reply;
+    reply = (PrepReply*)malloc(sizeof(*reply));
+	if(*request->n > PromisedN) {
+		reply->vote=PROMISE;
+		PromisedN = *request->n;
 	}else {
-		reply.vote = DENY;
+		reply->vote = DENY;
 	}
-	reply.key = acceptedKey;
-	reply.n = acceptedN;
-	return(&reply);
+	reply->key = acceptedKey;
+	reply->n = acceptedN;
+	return reply;
 }
 //execute put request
 int * accept_execute_put(void* thread_data) {
+    srand((unsigned) time(NULL));
+    int r = rand()%FailCap;
+    if (r > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+     fprintf(stdout, "accept_execute_put\n");
 	struct keyvalue_client *my_data;
 	my_data = (struct keyvalue_client*)thread_data;
 	KeyValue *kv;
@@ -208,7 +236,7 @@ int * accept_execute_put(void* thread_data) {
     		result = PUT_KVSTORE_OUT_OF_CAPACITY;
     		return (&result);
   	}
-	pthread_mutex_lock(&lock);
+	//pthread_mutex_lock(&lock);
   	for (i = 0; i < NextSlot; i++) {
     		if (!strcmp(KvStore[i][0], kv->key)) {
       			fprintf(stdout, "PUT: key=\"%s\", value=\"%s\", old_value=\"%s\"\n",kv->key, kv->value, KvStore[i][1]);
@@ -231,10 +259,18 @@ int * accept_execute_put(void* thread_data) {
   	fprintf(stderr, "PUT: failed for unknown reason!\n");
   	result = PUT_FAILED;
 	//pthread_mutex_unlock(&lock);
+     fprintf(stdout, "accept_execute_put done\n");
   	return (&result);
 }
 //execute delete request
 int * accept_execute_del(void* thread_data) {
+    srand((unsigned) time(NULL));
+    int r = rand()%FailCap;
+    if (r > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+    
 	struct key_client *my_data;
 	my_data = (struct keyvalue_client*)thread_data;
 	char *key;
@@ -287,37 +323,42 @@ int * accept_execute_del(void* thread_data) {
 }
 //call accept_prepare_put_1_svc() for a particular replica
 PrepReply* raccept_prepare_put(CLIENT *clnt,int n) {
-	static PrepReply response;
-	response.vote = PROMISE;
+     fprintf(stdout, "raccept_prepare_put\n");
+        PrepReply *response;
+    response = (PrepReply*)malloc(sizeof(*response));
+	response->vote = PROMISE;
 	if(n == (int)NULL) {
 		fprintf(stderr,"PUT: no n provided to prepare\n");
 		return NULL;
 	}
-	response = *accept_prepare_put_1(&n,clnt);//get the result from the accept_prepare_put_1_svc() function of this replica
-	if(&response==(PrepReply*)NULL) {
+	response = accept_prepare_put_1(&n,clnt);//get the result from the accept_prepare_put_1_svc() function of this replica
+	if(response==(PrepReply*)NULL) {
 		clnt_perror(clnt,"PUT: rpc error");
 		return NULL;
 	}
-	fprintf(stdout,"PUT: replication response %d\n",response.vote);
-	return &response;
+	fprintf(stdout,"PUT: replication response %d\n",response->vote);
+     fprintf(stdout, "raccept_prepare_put done\n");
+	return response;
 }
 //call accept_prepare_del_1_svc() for a particular replica
 PrepReply* raccept_prepare_del(CLIENT *clnt,int n) {
-	static PrepReply response;
+	PrepReply *response;
+    response = (PrepReply*)malloc(sizeof(*response));
 	if(n == (int)NULL) {
 		fprintf(stderr,"PUT: no n provided to prepare\n");
 		return NULL;
 	}
-	response = *accept_prepare_del_1(&n,clnt);//get the result from the accept_prepare_del_1_svc() function of this replica
-	if(&response==(PrepReply*)NULL) {
+	response = accept_prepare_del_1(&n,clnt);//get the result from the accept_prepare_del_1_svc() function of this replica
+	if(response==(PrepReply*)NULL) {
 		clnt_perror(clnt,"PUT: rpc error");
 		return NULL;
 	}
-	fprintf(stdout,"PUT: replication response %d\n",response.vote);
-	return &response;
+	fprintf(stdout,"PUT: replication response %d\n",response->vote);
+	return response;
 }
 //call accept_execute_put_1_svc() for a particular replica
 int* raccept_execute_put(CLIENT *clnt, char *key, char *value) {
+     fprintf(stdout, "raccept_execute_put\n");
 	KeyValue kv;
   	static int result;
 
@@ -347,6 +388,7 @@ int* raccept_execute_put(CLIENT *clnt, char *key, char *value) {
   	fprintf(stdout, "PUT: replication response: %s (%d)\n", PutResponseText[result], result);
   	free(kv.key);
   	free(kv.value);
+     fprintf(stdout, "rexecute_execute_put done\n");
   	return(&result);
 }
 //call accept_execute_del_1_svc() for a particular replica
@@ -375,46 +417,47 @@ int* raccept_execute_del(CLIENT *clnt, char *key) {
 //acceptor thread receives prepare request and goes to
 //accept_prepare_put to process
 PrepReply * accept_prepare_put_1_svc(int *n, struct svc_req *req) {
-	static PrepReply return_val;
+     fprintf(stdout, "accept_prepare_put_1_svc\n");
 	PrepReply* result;
 	struct PrepReq *request;
-	request = (struct PrepReq*)malloc(sizeof(request));
+	request = (struct PrepReq*)malloc(sizeof(*request));
 	request->n = n;//no for prepare request and client that initiated request
 	request->clnt = (CLIENT*)req;
 	pthread_t acceptor_thread;
 	pthread_create(&acceptor_thread,NULL,(void*)accept_prepare_put,(void*)request);//acceptor thread goes to accept_prepare_put function to process request
 	pthread_join(acceptor_thread,(void*)&result);//result from acceptor thread
-	return_val = *result;
-	return(&return_val);
+	//return_val = *result;
+     fprintf(stdout, "accept_prepare_put_1_svc done\n");
+	return(result);
 }
 //acceptor thread receives prepare request and goes to
 //accept_prepare_del to process
 PrepReply * accept_prepare_del_1_svc(int *n, struct svc_req *req) {
-	static PrepReply return_val;
 	PrepReply *result;
 	struct PrepReq *request;//n for prepare request and client that initiated request
-	request = (struct PrepReq*)malloc(sizeof(request));
+	request = (struct PrepReq*)malloc(sizeof(*request));
 	request->n = n;
 	request->clnt = (CLIENT *)req;
 	pthread_t acceptor_thread;
 	pthread_create(&acceptor_thread,NULL,(void*)accept_prepare_del,(void*)request);//acceptor thread goes to accept_prepare_del function to process request
 	pthread_join(acceptor_thread,(void*)&result);//result from acceptor thread
-	return_val = *result;
-	return(&return_val);
+	return result;
 }
 //acceptor thread receives put request and goes to
 //accept_execute_put to process
 int * accept_execute_put_1_svc(KeyValue *kv, struct svc_req *req) {
+     fprintf(stdout, "accept_execute_put_1_svc\n");
 	static int return_value;
 	int* result;
 	struct keyvalue_client *thread_data;//key value for put and client that initiated request
-	thread_data = (struct keyvalue_client*)malloc(sizeof(thread_data));
+	thread_data = (struct keyvalue_client*)malloc(sizeof(*thread_data));
   	thread_data->kv = kv;
   	thread_data->clnt = (CLIENT *)req;
   	pthread_t acceptor_thread;//thread to handle request
   	pthread_create(&acceptor_thread,NULL,(void*)accept_execute_put,(void*)thread_data);//send request to accept_execute_put to process
   	pthread_join(acceptor_thread,(void*)&result);//get result from accept_execute_put and return
-	return_value = *result;	
+	return_value = *result;
+     fprintf(stdout, "accept_execute_put_1_svc done\n");
 	return(&return_value);
 }
 //acceptor thread receives delete request and goes to
@@ -423,7 +466,7 @@ int * accept_execute_del_1_svc(char *key, struct svc_req *req) {
 	static int return_value;
 	int* result;
 	struct key_client *thread_data;//key for delete and client that initiated request
-	thread_data = (struct key_client*)malloc(sizeof(thread_data));
+	thread_data = (struct key_client*)malloc(sizeof(*thread_data));
 	thread_data->key = key;
 	thread_data->clnt = (CLIENT *)req;
 	pthread_t acceptor_thread;//thread to handle request
@@ -434,6 +477,13 @@ int * accept_execute_del_1_svc(char *key, struct svc_req *req) {
 }
 //proposer thread from thread_put_1_svc comes here to send prepare request
 int * propose_prepare_put(void* req) {
+    srand((unsigned) time(NULL));
+    int i = rand()%FailCap;
+    if (i > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+     fprintf(stdout, "propose_prepare_put\n");
 	static int count;//final count of yes votes
 	int dynamicCount = 0;//running cout of yes votes
 	PrepReply *reply;//current reply
@@ -445,16 +495,24 @@ int * propose_prepare_put(void* req) {
 	}
 	replicate_begin();//open replica connection
 	for(int i=0; i<ReplicaCount;i++) {//send prepare request to each replica
-		if((reply = raccept_prepare_put(Replica[i],n))->vote==PROMISE) {
+		if((reply = raccept_prepare_put(Replica[i],*n))->vote==PROMISE) {
 			dynamicCount++; //if a replica promises,increase the yes count
 		}
 	}
 	replicate_end();//end replica connection
 	count = dynamicCount;//save final count
+     fprintf(stdout, "propose_prepare_put done\n");
 	return(&count);//return final count of yes votes
 }
 //proposer thread from thread_del_1_svc comes here to send prepare request
 int * propose_prepare_del(void* req) {
+    srand((unsigned) time(NULL));
+    int i = rand()%FailCap;
+    if (i > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+    
 	static int count; //final count of yes votes
 	int dynamicCount = 0; //running count of yes votes
 	PrepReply *reply; //current reply
@@ -477,6 +535,14 @@ int * propose_prepare_del(void* req) {
 }
 //proposer thread from thread_put_1_svc comes here after getting majority
 int * propose_execute_put(void* thread_data) {
+    srand((unsigned) time(NULL));
+    int i = rand()%FailCap;
+    if (i > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+    
+     fprintf(stdout, "propose_execute_put\n");
 	static int result;//final result from execution of delete request
 	int remoteResult;
 	struct keyvalue_client *my_data;//keyvalue and client the request came from
@@ -497,10 +563,18 @@ int * propose_execute_put(void* thread_data) {
 	}
 	replicate_end();
 	result=PUT_OK;
+     fprintf(stdout, "propose_exevute_put done\n");
 	return(&result);//return final result
 }
 //proposer thread from thread_del_1_svc comes here after getting majority
 int * propose_execute_del(void* thread_data) {
+    srand((unsigned) time(NULL));
+    int r = rand()%FailCap;
+    if (r > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+    
 	static int result;//final result from execution of delete request
 	int remoteResult;
 	int i;
@@ -525,6 +599,14 @@ int * propose_execute_del(void* thread_data) {
 }
 //thread from put_1_svc comes here to perform put
 int * thread_put_1_svc(void* thread_data) {
+    srand((unsigned) time(NULL));
+    int i = rand()%FailCap;
+    if (i > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+    
+     fprintf(stdout, "thread_put_1_svc\n");
 	int* result;
 	static int return_val;//result of overall request
 	int* count;//number of OKs received
@@ -534,14 +616,14 @@ int * thread_put_1_svc(void* thread_data) {
 		replicate_begin();
 		KeyValue *kv;
 		kv = my_data->kv;
-		result = put_1(kv,Replica[1]);
+		result = put_1(kv,Replica[0]);
 		replicate_end();
 		return_val = result;
 		return(&return_val);		
 	}
   	pthread_t proposer_thread;
 	CLIENT *clnt;
-	clnt = (CLIENT*)malloc(sizeof(clnt));
+	clnt = (CLIENT*)malloc(sizeof(*clnt));
 	clnt = my_data->clnt;
 	//proposer goes to propose_prepare_put to send prepare request for put -- does not require input
   	pthread_create(&proposer_thread,NULL,(void*)propose_prepare_put,(void*)clnt);
@@ -553,18 +635,25 @@ int * thread_put_1_svc(void* thread_data) {
 	pthread_create(&proposer_thread,NULL,(void*)propose_execute_put,(void*)my_data);
 	pthread_join(proposer_thread,(void*)&result);//save the final result from the execute here
 	return_val = *result;
+     fprintf(stdout, "thread_put_1_svc done\n");
 	return(&return_val);//return the result received from propose_execute_put
 }
 //thread from del_1_svc comes here to perform delete
 int * thread_del_1_svc(void* thread_data) {
-	int *result;//result of overall request	
+    srand((unsigned) time(NULL));
+    int i = rand()%FailCap;
+    if (i > FailTh) {
+        fprintf(stdout, "Server Failure\n");
+        return 0;
+    }
+	int *result;//result of overall request
 	static int return_val;
 	int *count;//number of OKs received
 	struct key_client *my_data;
 	my_data = (struct key_client*)thread_data;//key value and client the request came from
 	pthread_t proposer_thread;
 	CLIENT *clnt;
-	clnt = (CLIENT*)malloc(sizeof(clnt));
+	clnt = (CLIENT*)malloc(sizeof(*clnt));
 	clnt = my_data->clnt;
 	//proposer goes to propose_prepare_del to send prepare request for delete -- does not require input
 	pthread_create(&proposer_thread,NULL,(void*)propose_prepare_del,(void*)clnt);
@@ -581,52 +670,53 @@ int * thread_del_1_svc(void* thread_data) {
 }
 //receives put request from client here and send to thread_put_1_svc via pthread
 int * put_1_svc(KeyValue *kv, struct svc_req *req) {
-	static int return_val;
+     fprintf(stdout, "put_1_svc\n");
 	int* result;
 	struct keyvalue_client *thread_data;//key value for put and client that initiated request
-	thread_data = (struct keyvalue_client*)malloc(sizeof(thread_data));
+	thread_data = (struct keyvalue_client*)malloc(sizeof(*thread_data));
 	thread_data->kv = kv;
 	thread_data->clnt = req;
   	pthread_t put_thread;//thread to handle request
   	pthread_create(&put_thread,NULL,thread_put_1_svc,(void*)thread_data);//send request to thread_put_1_svc to process
   	pthread_join(put_thread,(void*)&result);//get result from thread_put_1_svc and return
-	return_val = *result;	
-	return(&return_val);
+	//return_val = *result;
+     fprintf(stdout, "put_1_svc done\n");
+	return result;
 }
-
 //receive get request from client here
 GetReply * get_1_svc(char **key, struct svc_req *req) {
-  	static GetReply result; /* must be static */
+    GetReply *result;
+    result = (GetReply*)malloc(sizeof(*result));
   	int status;
   	int i; 
 	if(!DISTINGUISHED) {
 		replicate_begin();
-		result = *get_1(key,Replica[1]);
+		result = get_1(key,Replica[0]);
 		replicate_end();
-		return(&result);		
+		return result;
 	}
-  	result = *rget_1_svc(key, req);
-  	if (result.code != GET_OK) {
-    		return (&result);
+  	result = rget_1_svc(key, req);
+  	if (result->code != GET_OK) {
+    		return result;
   	}
   	replicate_begin();
   	for (i = 0; i < ReplicaCount; i++) {
-    		if ((status = rget(Replica[i], *key, result.value)) != GET_OK) {
-      			strcpy(result.value, "");
-      			result.code = status;
+    		if ((status = rget(Replica[i], *key, result->value)) != GET_OK) {
+      			strcpy(result->value, "");
+      			result->code = status;
       			replicate_end();
-      			return (&result);
+      			return result;
    		 }
   	}
   	replicate_end();
-  	return (&result);
+  	return result;
 }
 //receives delete request from client here and send to thread_del_1_svc via pthread
 int * del_1_svc(char **key, struct svc_req *req) {
 	static int return_val;
 	int* result;
 	struct key_client *thread_data;//key to delete and client the request came from
-	thread_data = (struct key_client*)malloc(sizeof(thread_data));
+	thread_data = (struct key_client*)malloc(sizeof(*thread_data));
   	thread_data->key = *key;
   	thread_data->clnt = req;
   	pthread_t del_thread;//thread to handle request
@@ -638,44 +728,45 @@ int * del_1_svc(char **key, struct svc_req *req) {
 //receive get request either from remove server (via that server's rget function)
 //or from local get_1_svc
 GetReply * rget_1_svc(char **key, struct svc_req *req) {
-  	static GetReply result; /* must be static */
+  	GetReply *result;
+    result = (GetReply*)malloc(sizeof(*result));
   	static char buffer[MAX_LENGTH]; /* must be static */
   	int i;
-  	if (result.value == NULL) {
-    		result.value = buffer;
+  	if (result->value == NULL) {
+    		result->value = buffer;
   	}
-  	strcpy(result.value, ""); 
+  	strcpy(result->value, "");
   	if ((key == NULL) || (*key == NULL)) {
     		fprintf(stderr, "GET: key is null\n");
-    		result.code = GET_KEY_IS_NULL;
-    		return (&result);
+    		result->code = GET_KEY_IS_NULL;
+    		return result;
   	}
   	if (strlen(*key) + 1 >= MAX_LENGTH) {
     		fprintf(stderr, "GET: key is too large\n");
-    		result.code = GET_KEY_IS_TOO_LARGE;
-    		return (&result);
+    		result->code = GET_KEY_IS_TOO_LARGE;
+    		return result;
   	}
   	if (NextSlot == 0) {
     		fprintf(stderr, "GET: key value store is empty\n");
-    		result.code = GET_KVSTORE_IS_EMPTY;
-    		return (&result);
+    		result->code = GET_KVSTORE_IS_EMPTY;
+    		return result;
   	}
   	for (i = 0; i < NextSlot; i++) {
     		if (!strcmp(KvStore[i][0], *key)) {
       			fprintf(stdout, "GET: key=\"%s\", value=\"%s\"\n", *key, KvStore[i][1]);
-      			strcpy(result.value, KvStore[i][1]);
-      			result.code = GET_OK;
-      			return (&result);
+      			strcpy(result->value, KvStore[i][1]);
+      			result->code = GET_OK;
+      			return result;
     		}
   	}
   	if (i == NextSlot) {
     		fprintf(stdout, "GET: key=\"%s\" not found\n", *key);
-    		result.code = GET_KEY_NOT_FOUND;
-    		return (&result);    
+    		result->code = GET_KEY_NOT_FOUND;
+    		return result;
   	}  
   	fprintf(stderr, "GET: failed for unknown reason!\n");
-  	result.code = GET_FAILED;
-  	return (&result);
+  	result->code = GET_FAILED;
+  	return result;
 }
 
 
